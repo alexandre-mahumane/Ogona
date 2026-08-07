@@ -1,0 +1,49 @@
+{
+  "name": "ogona-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ogona MVP API — Node, Express, PostgreSQL, Drizzle, Zod",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate:test": "NODE_ENV=test tsx src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_ENV=test vitest run",
+    "test:watch": "NODE_ENV=test vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "zod": "^3.25.28"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/ioredis": "^4.28.10",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.2",
+    "@types/supertest": "^7.2.1",
+    "drizzle-kit": "^0.31.10",
+    "supertest": "^7.2.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
+  }
+}

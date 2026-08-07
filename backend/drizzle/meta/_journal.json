@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786129861840,
+      "tag": "0000_cooing_johnny_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786130170946,
+      "tag": "0001_acoustic_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786130494139,
+      "tag": "0002_violet_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786132076343,
+      "tag": "0003_workable_mach_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786133408459,
+      "tag": "0004_pale_adam_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786134615172,
+      "tag": "0005_rainy_slapstick",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786135424311,
+      "tag": "0006_colossal_madame_masque",
+      "breakpoints": true
+    }
+  ]
+}

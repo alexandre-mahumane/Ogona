@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+.env.test
+!.env.example
+
+# Logs & OS
+logs/
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE / tooling
+.idea/
+.vscode/
+*.swp
+coverage/
+.turbo/
