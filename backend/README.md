@@ -2,6 +2,8 @@
 
 Backend MVP — Node + Express + TS + PostgreSQL + Drizzle + Redis + Zod + Docker (MVC + DTOs).
 
+**Documentação para code review (decisões + lógica das rotas):** [`docs/GUIA-CODE-REVIEW.md`](./docs/GUIA-CODE-REVIEW.md)
+
 ## Setup
 
 ```bash
@@ -11,6 +13,10 @@ npm install
 npm run db:migrate
 npm run dev
 ```
+
+- Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+- OpenAPI JSON: [http://localhost:3000/api/docs.json](http://localhost:3000/api/docs.json)
+- Ping: `GET /ping` ou `GET /api/v1/health/ping`
 
 ## Testes
 

@@ -39,7 +39,6 @@ export function computeCheckOutDate(
     const rem = endMinutes % (24 * 60);
     const endH = String(Math.floor(rem / 60)).padStart(2, '0');
     const endM = String(rem % 60).padStart(2, '0');
-    // Ocupa pelo menos 1 dia no calendário (checkout exclusivo).
     return {
       checkOutDate: addDays(checkIn, Math.max(extraDays, 1)),
       estimatedEndTime: `${endH}:${endM}`,

@@ -35,7 +35,6 @@ export class CalendarService {
       reservationRepository.listConfirmedInRange(
         hostId,
         from,
-        // include checkout day markers in month
         to,
       ),
     ]);

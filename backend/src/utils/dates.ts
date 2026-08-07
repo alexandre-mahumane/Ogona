@@ -1,4 +1,3 @@
-/** Utilitários de data (UTC date-only). */
 
 export function toDateOnly(value: Date | string): Date {
   if (typeof value === 'string') {

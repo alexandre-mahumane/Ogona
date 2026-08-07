@@ -122,7 +122,6 @@ export class DiscoverRepository {
       .limit(query.limit)
       .offset(query.offset);
 
-    // drizzle groupBy not needed with scalar subqueries
     const rows = await baseQuery;
 
     return rows.filter((row) => {

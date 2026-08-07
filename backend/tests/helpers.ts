@@ -41,7 +41,6 @@ export async function resetDatabase(): Promise<void> {
   try {
     await redis.flushdb();
   } catch {
-    // redis opcional em alguns ambientes
   }
 }
 

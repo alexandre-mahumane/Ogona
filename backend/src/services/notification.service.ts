@@ -20,7 +20,6 @@ export class NotificationService {
       return;
     }
 
-    // Placeholder: falhar de forma explícita até haver credenciais reais
     throw new Error(
       `OTP delivery via ${input.channel} not configured. Set up SMS/WhatsApp provider.`,
     );
