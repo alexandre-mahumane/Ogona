@@ -11,9 +11,18 @@ cp .env.example .env
 docker compose up -d db redis
 npm install
 npm run db:migrate
+npm run db:seed   # dados demo para o mobile
 npm run dev
 ```
 
+### Contas demo (após `db:seed`)
+
+| Papel | Telefone | Password |
+|-------|----------|----------|
+| Hóspede | `841111111` | `senha12345` |
+| Anfitrião | `842222222` | `senha12345` |
+
+Cria 2 propriedades publicadas (Maputo + Beira), quartos, 1 reserva pendente e 1 favorito.
 - Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 - OpenAPI JSON: [http://localhost:3000/api/docs.json](http://localhost:3000/api/docs.json)
 - Ping: `GET /ping` ou `GET /api/v1/health/ping`
@@ -26,6 +35,8 @@ DB de testes: `ogona-test` (via `.env.test`).
 npm run db:migrate:test
 npm test
 ```
+
+O ficheiro `tests/seed-demo.test.ts` valida o dataset demo (login, discover, favoritos, reservas, dashboard).
 
 ## Auth
 

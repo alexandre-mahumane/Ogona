@@ -17,7 +17,7 @@ Ogona é um MVP de **alojamentos em Moçambique**. A API serve dois papéis dist
 | **guest** (hóspede) | Utilizador que reserva | Explorar, favoritar, pedir reserva, pagar, avaliar |
 | **host** (anfitrião) | Dono do alojamento | Gerir propriedades/quartos, calendário, aceitar/rejeitar pedidos |
 
-**Moeda:** Metical (`MZN` / “MT” na UI).  
+**Moeda:** Metical (`MZN` / “MT”).  
 **Contacto do host:** `whatsapp` / `contactPhone` na propriedade (botão “Contactar anfitrião” no app).
 
 A UI (Figma) ditou estados de reserva, modalidades (hora/noite/mês), Taxa Ogona 3.3%, M-Pesa/e-Mola e destinos populares. O backend modela isso de forma explícita, em vez de “inventar” um fluxo genérico tipo Airbnb só com noites.
@@ -51,7 +51,6 @@ HTTP → Route → Middleware (auth / role / Zod) → Controller → Service →
 
 ### 3.1 Login por telefone (não email)
 
-Em Moçambique o telefone é o identificador natural (M-Pesa, WhatsApp).  
 **Decisão:** `phone` único, normalizado para E.164 (`+258…`). Email é opcional no perfil.
 
 ### 3.2 Dois registos separados
@@ -78,7 +77,7 @@ Fluxo:
 4. `POST /auth/password/reset` — nova senha + devolve JWT
 
 **Porquê Redis:** OTP é efémero; não polui a tabela `users`.  
-**Porquê stub SMS/WhatsApp:** no MVP só se faz `console.log` em dev; a interface `notificationService` permite plugar Twilio/etc. depois sem mudar rotas.
+**Porquê stub SMS/WhatsApp:** no MVP só se faz `console.log` em dev; a interface `notificationService` permite plugar os services. depois sem mudar rotas.
 
 ### 3.5 Foto de perfil
 

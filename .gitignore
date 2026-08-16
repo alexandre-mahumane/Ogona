@@ -25,3 +25,15 @@ Thumbs.db
 *.swp
 coverage/
 .turbo/
+
+# Expo / mobile
+.expo/
+web-build/
+expo-env.d.ts
+mobile/ios/
+mobile/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
