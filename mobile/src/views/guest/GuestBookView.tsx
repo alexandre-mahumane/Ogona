@@ -10,6 +10,13 @@ import {
   StickyFooter,
 } from '@/components/guest/GuestChrome';
 import { Button, Screen, Text } from '@/components/ui';
+import {
+  CalendarPicker,
+  TimePickerModal,
+  addDaysIso,
+  daysBetween,
+  toIsoDate,
+} from '@/components/ui/CalendarPicker';
 import { calcBookingTotal, type StayModality } from '@/data/guest.mock';
 import { usePropertyDetail } from '@/hooks/useDiscover';
 import {
@@ -27,12 +34,6 @@ const modalityLabels: Record<StayModality, string> = {
   month: 'Por Mês',
 };
 
-function addDays(isoDate: string, days: number) {
-  const d = new Date(`${isoDate}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 function formatDisplayDate(iso: string) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('pt-MZ', {
     day: '2-digit',
@@ -43,8 +44,8 @@ function formatDisplayDate(iso: string) {
 
 function defaultCheckInDate() {
   const d = new Date();
-  d.setDate(d.getDate() + 4);
-  return d.toISOString().slice(0, 10);
+  d.setDate(d.getDate() + 1);
+  return toIsoDate(d);
 }
 
 function Stepper({
@@ -82,22 +83,29 @@ function Stepper({
   );
 }
 
-function DatePlaceholder({
+function DateField({
   label,
   value,
+  onPress,
+  icon = 'calendar-outline',
 }: {
   label: string;
   value: string;
+  onPress: () => void;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <View className="gap-1.5">
       <Text variant="label-xs">{label}</Text>
-      <View className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-4">
+      <Pressable
+        onPress={onPress}
+        className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-4"
+      >
         <Text variant="p-s" className="text-ink">
           {value}
         </Text>
-        <Ionicons name="calendar-outline" size={18} color={colors.ink.soft} />
-      </View>
+        <Ionicons name={icon} size={18} color={colors.ink.soft} />
+      </Pressable>
     </View>
   );
 }
@@ -115,8 +123,14 @@ export function GuestBookView() {
   const [guests, setGuests] = useState(2);
   const [hours, setHours] = useState(3);
   const [months, setMonths] = useState(1);
-  const [nights] = useState(3);
-  const [checkInDate] = useState(defaultCheckInDate);
+  const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
+  const [checkOutDate, setCheckOutDate] = useState(() =>
+    addDaysIso(defaultCheckInDate(), 2),
+  );
+  const [startTime, setStartTime] = useState('14:00');
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!listing?.rooms.length) return;
@@ -142,6 +156,7 @@ export function GuestBookView() {
     }
   }, [rate, modality]);
 
+  const nights = daysBetween(checkInDate, checkOutDate);
   const qty =
     modality === 'hour' ? hours : modality === 'month' ? months : nights;
 
@@ -158,10 +173,11 @@ export function GuestBookView() {
       roomId: room.id,
       modality: toApiModality(modality),
       checkInDate,
+      startTime: modality === 'hour' ? startTime : undefined,
       units: qty,
       guestCount: guests,
     };
-  }, [room?.id, modality, checkInDate, qty, guests]);
+  }, [room?.id, modality, checkInDate, startTime, qty, guests]);
 
   const quoteMutation = useReservationQuote();
 
@@ -183,17 +199,19 @@ export function GuestBookView() {
         unitPrice: rate?.price ?? 0,
       };
 
-  const checkOutDate =
+  const resolvedCheckOut =
     modality === 'night'
-      ? addDays(checkInDate, nights)
+      ? checkOutDate
       : modality === 'month'
-        ? addDays(checkInDate, months * 30)
+        ? addDaysIso(checkInDate, months * 30)
         : checkInDate;
 
   const periodLabel =
     modality === 'night'
-      ? `${formatDisplayDate(checkInDate)} – ${formatDisplayDate(checkOutDate)}`
-      : formatDisplayDate(checkInDate);
+      ? `${formatDisplayDate(checkInDate)} – ${formatDisplayDate(resolvedCheckOut)}`
+      : modality === 'hour'
+        ? `${formatDisplayDate(checkInDate)} · ${startTime}`
+        : formatDisplayDate(checkInDate);
 
   const title =
     step === 'room'
@@ -204,6 +222,7 @@ export function GuestBookView() {
 
   const confirmBooking = () => {
     if (!quoteInput) return;
+    setFormError(null);
     createReservation.mutate(quoteInput, {
       onSuccess: (reservation) => {
         if (reservation?.id) {
@@ -214,6 +233,11 @@ export function GuestBookView() {
           return;
         }
         router.replace('/(guest)/book-success');
+      },
+      onError: (error) => {
+        setFormError(
+          error instanceof Error ? error.message : 'Não foi possível criar a reserva',
+        );
       },
     });
   };
@@ -319,13 +343,15 @@ export function GuestBookView() {
           <>
             {modality === 'night' ? (
               <View className="gap-4">
-                <DatePlaceholder
+                <DateField
                   label="Check-in"
                   value={formatDisplayDate(checkInDate)}
+                  onPress={() => setCalendarOpen(true)}
                 />
-                <DatePlaceholder
+                <DateField
                   label="Check-out"
                   value={formatDisplayDate(checkOutDate)}
+                  onPress={() => setCalendarOpen(true)}
                 />
                 <Stepper
                   label="Hóspedes"
@@ -337,9 +363,16 @@ export function GuestBookView() {
 
             {modality === 'hour' ? (
               <View className="gap-4">
-                <DatePlaceholder
+                <DateField
                   label="Data"
                   value={formatDisplayDate(checkInDate)}
+                  onPress={() => setCalendarOpen(true)}
+                />
+                <DateField
+                  label="Hora de entrada"
+                  value={startTime}
+                  icon="time-outline"
+                  onPress={() => setTimeOpen(true)}
                 />
                 <Stepper label="Horas" value={hours} onChange={setHours} />
               </View>
@@ -347,12 +380,21 @@ export function GuestBookView() {
 
             {modality === 'month' ? (
               <View className="gap-4">
-                <DatePlaceholder
+                <DateField
                   label="Data de início"
                   value={formatDisplayDate(checkInDate)}
+                  onPress={() => setCalendarOpen(true)}
                 />
                 <Stepper label="Meses" value={months} onChange={setMonths} />
               </View>
+            ) : null}
+
+            {quoteMutation.isError ? (
+              <Text variant="p-s" className="text-[#FB2C36]">
+                {quoteMutation.error instanceof Error
+                  ? quoteMutation.error.message
+                  : 'Não foi possível calcular o preço'}
+              </Text>
             ) : null}
 
             <PriceBreakdown
@@ -407,6 +449,12 @@ export function GuestBookView() {
               ))}
             </View>
 
+            {formError ? (
+              <Text variant="p-s" className="text-[#FB2C36]">
+                {formError}
+              </Text>
+            ) : null}
+
             <PriceBreakdown
               nightPrice={formatMt(totals.unitPrice)}
               qty={formatMt(totals.subtotal)}
@@ -436,6 +484,33 @@ export function GuestBookView() {
           </Button>
         ) : null}
       </StickyFooter>
+
+      <CalendarPicker
+        visible={calendarOpen}
+        title={modality === 'night' ? 'Escolher datas' : 'Escolher data'}
+        mode={modality === 'night' ? 'range' : 'single'}
+        startDate={checkInDate}
+        endDate={checkOutDate}
+        minDate={toIsoDate()}
+        onClose={() => setCalendarOpen(false)}
+        onConfirm={(start, end) => {
+          setCheckInDate(start);
+          if (end) setCheckOutDate(end);
+          else if (modality === 'night') setCheckOutDate(addDaysIso(start, 1));
+          setCalendarOpen(false);
+        }}
+      />
+
+      <TimePickerModal
+        visible={timeOpen}
+        title="Hora de entrada"
+        value={startTime}
+        onClose={() => setTimeOpen(false)}
+        onConfirm={(time) => {
+          setStartTime(time);
+          setTimeOpen(false);
+        }}
+      />
     </Screen>
   );
 }

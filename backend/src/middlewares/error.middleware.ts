@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../utils/errors';
-import { env } from '../config/env';
 
 export function notFoundHandler(_req: Request, res: Response): void {
   res.status(404).json({
@@ -49,7 +48,7 @@ export function errorHandler(
     success: false,
     error: {
       code: 'INTERNAL_ERROR',
-      message: env.NODE_ENV === 'production' ? 'Internal server error' : String(err),
+      message: 'Internal server error',
     },
   });
 }

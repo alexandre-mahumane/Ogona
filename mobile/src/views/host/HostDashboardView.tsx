@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Screen, Text } from '@/components/ui';
@@ -118,7 +118,12 @@ export function HostDashboardView() {
             </Pressable>
           </View>
           {d.pending ? (
-            <View className="rounded-[15px] border border-[#FEFCE8] bg-surface p-4 shadow-sm">
+            <Pressable
+              onPress={() =>
+                router.push(`/(host)/reservation/${d.pending!.id}` as Href)
+              }
+              className="rounded-[15px] border border-[#FEFCE8] bg-surface p-4 shadow-sm"
+            >
               <View className="flex-row items-center gap-3">
                 <View className="h-[38px] w-[38px] items-center justify-center rounded-full bg-brand">
                   <Text className="font-inter-semibold text-[13px] text-white">
@@ -146,7 +151,10 @@ export function HostDashboardView() {
               <View className="mt-3 flex-row gap-2">
                 <Pressable
                   disabled={acceptReservation.isPending}
-                  onPress={() => acceptReservation.mutate(d.pending!.id)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    acceptReservation.mutate(d.pending!.id);
+                  }}
                   className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#F0FDF4]"
                 >
                   <Text className="font-inter-semibold text-[11px] text-[#00C950]">
@@ -155,7 +163,10 @@ export function HostDashboardView() {
                 </Pressable>
                 <Pressable
                   disabled={rejectReservation.isPending}
-                  onPress={() => rejectReservation.mutate(d.pending!.id)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    rejectReservation.mutate(d.pending!.id);
+                  }}
                   className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
                 >
                   <Text className="font-inter-semibold text-[11px] text-[#FB2C36]">
@@ -166,7 +177,7 @@ export function HostDashboardView() {
                   <Ionicons name="ellipsis-horizontal" size={14} color="#525252" />
                 </Pressable>
               </View>
-            </View>
+            </Pressable>
           ) : (
             <View className="rounded-[15px] border border-[#F5F5F5] bg-surface px-4 py-6">
               <Text variant="p-s" className="text-center text-ink-soft">

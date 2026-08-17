@@ -5,6 +5,7 @@ export default function HostLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="property/[id]" />
+      <Stack.Screen name="reservation/[id]" />
       <Stack.Screen name="calendar" />
       <Stack.Screen name="add-property/index" />
       <Stack.Screen name="add-room/index" />

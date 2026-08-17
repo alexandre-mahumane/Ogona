@@ -41,6 +41,7 @@ export type GuestListing = {
   reviewCount: number;
   image: string;
   images: string[];
+  propertyType?: string;
   badge?: { label: string; tone: 'green' | 'blue' | 'orange' };
   favorite?: boolean;
   amenities: { icon: string; label: string }[];

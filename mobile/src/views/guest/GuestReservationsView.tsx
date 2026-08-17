@@ -60,6 +60,19 @@ export function GuestReservationsView() {
       <View className="mt-6 gap-3 px-4">
         {reservationsQuery.isLoading ? (
           <ActivityIndicator color={colors.brand.DEFAULT} />
+        ) : reservationsQuery.isError ? (
+          <View className="gap-2 py-6">
+            <Text variant="p-s" className="text-center">
+              {reservationsQuery.error instanceof Error
+                ? reservationsQuery.error.message
+                : 'Não foi possível carregar as reservas'}
+            </Text>
+            <Pressable onPress={() => void reservationsQuery.refetch()}>
+              <Text className="text-center font-inter-semibold text-brand">
+                Tentar novamente
+              </Text>
+            </Pressable>
+          </View>
         ) : list.length === 0 ? (
           <Text variant="p-s" className="text-center text-ink-soft">
             Nenhuma reserva encontrada
@@ -68,7 +81,12 @@ export function GuestReservationsView() {
           list.map((r) => (
             <Pressable
               key={r.id}
-              onPress={() => router.push(`/(guest)/reservation/${r.id}`)}
+              onPress={() =>
+                router.push({
+                  pathname: '/(guest)/reservation/[id]',
+                  params: { id: r.id },
+                })
+              }
               className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface shadow-sm"
             >
               <View className="flex-row gap-3 p-3">
@@ -111,7 +129,13 @@ export function GuestReservationsView() {
               {r.status === 'awaiting_payment' ? (
                 <View className="flex-row gap-2 px-3 pb-3">
                   <Pressable
-                    onPress={() => router.push(`/(guest)/pay/${r.id}`)}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push({
+                        pathname: '/(guest)/pay/[id]',
+                        params: { id: r.id },
+                      });
+                    }}
                     className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#EFF6FF]"
                   >
                     <Text className="font-inter-semibold text-[11px] text-[#2B7FFF]">
@@ -119,7 +143,13 @@ export function GuestReservationsView() {
                     </Text>
                   </Pressable>
                   <Pressable
-                    onPress={() => router.push(`/(guest)/reservation/${r.id}`)}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push({
+                        pathname: '/(guest)/reservation/[id]',
+                        params: { id: r.id },
+                      });
+                    }}
                     className="h-[34px] flex-1 items-center justify-center rounded-[15px] border border-surface-border"
                   >
                     <Text className="font-inter-semibold text-[11px] text-ink-secondary">

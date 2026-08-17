@@ -7,13 +7,17 @@ import {
   StickyFooter,
 } from '@/components/guest/GuestChrome';
 import { Button, Screen, Text } from '@/components/ui';
+import {
+  useFiltersStore,
+  type FiltersState,
+} from '@/stores/filters.store';
 import { colors } from '@/theme/colors';
 
 const lodgingTypes = [
   { id: 'hotel', label: 'Hotel' },
-  { id: 'apartment', label: 'Apartamento' },
-  { id: 'house', label: 'Vivenda' },
-  { id: 'room', label: 'Quarto' },
+  { id: 'apartamento', label: 'Apartamento' },
+  { id: 'casa', label: 'Vivenda' },
+  { id: 'pensao', label: 'Pensão' },
   { id: 'lodge', label: 'Lodge' },
 ];
 
@@ -122,15 +126,31 @@ function FieldLabel({ children }: { children: string }) {
 }
 
 export function GuestFiltersView() {
-  const [destination, setDestination] = useState('');
-  const [types, setTypes] = useState<string[]>([]);
-  const [rating, setRating] = useState('all');
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [modality, setModality] = useState('night');
-  const [rooms, setRooms] = useState('1+');
-  const [baths, setBaths] = useState('1+');
-  const [parking, setParking] = useState('none');
+  const saved = useFiltersStore((s) => s.filters);
+  const setFilters = useFiltersStore((s) => s.setFilters);
+  const clearStore = useFiltersStore((s) => s.clearFilters);
+
+  const [destination, setDestination] = useState(saved.destination);
+  const [types, setTypes] = useState<string[]>(saved.types);
+  const [rating, setRating] = useState(saved.rating);
+  const [priceMin, setPriceMin] = useState(saved.priceMin);
+  const [priceMax, setPriceMax] = useState(saved.priceMax);
+  const [modality, setModality] = useState(saved.modality);
+  const [rooms, setRooms] = useState(saved.rooms);
+  const [baths, setBaths] = useState(saved.baths);
+  const [parking, setParking] = useState(saved.parking);
+
+  const draft: FiltersState = {
+    destination,
+    types,
+    rating,
+    priceMin,
+    priceMax,
+    modality,
+    rooms,
+    baths,
+    parking,
+  };
 
   const clearAll = () => {
     setDestination('');
@@ -142,12 +162,18 @@ export function GuestFiltersView() {
     setRooms('1+');
     setBaths('1+');
     setParking('none');
+    clearStore();
   };
 
   const toggleType = (id: string) => {
     setTypes((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
+  };
+
+  const apply = () => {
+    setFilters(draft);
+    router.navigate('/(guest)/(tabs)/explore');
   };
 
   return (
@@ -268,7 +294,7 @@ export function GuestFiltersView() {
             </Text>
           </Pressable>
           <View className="flex-1">
-            <Button onPress={() => router.back()}>Aplicar filtros</Button>
+            <Button onPress={apply}>Aplicar filtros</Button>
           </View>
         </View>
       </StickyFooter>

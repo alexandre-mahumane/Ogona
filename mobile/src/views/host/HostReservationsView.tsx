@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { type Href, router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
@@ -77,6 +78,19 @@ export function HostReservationsView() {
       <View className="mt-6 gap-3 px-4">
         {reservationsQuery.isLoading ? (
           <ActivityIndicator color={colors.brand.DEFAULT} />
+        ) : reservationsQuery.isError ? (
+          <View className="gap-2 py-6">
+            <Text variant="p-s" className="text-center">
+              {reservationsQuery.error instanceof Error
+                ? reservationsQuery.error.message
+                : 'Não foi possível carregar as reservas'}
+            </Text>
+            <Pressable onPress={() => void reservationsQuery.refetch()}>
+              <Text className="text-center font-inter-semibold text-brand">
+                Tentar novamente
+              </Text>
+            </Pressable>
+          </View>
         ) : list.length === 0 ? (
           <Text variant="p-s" className="text-center text-ink-soft">
             Nenhuma reserva encontrada
@@ -85,8 +99,11 @@ export function HostReservationsView() {
           list.map((r) => {
             const style = reservationStatusStyle[r.status as ReservationStatus];
             return (
-              <View
+              <Pressable
                 key={r.id}
+                onPress={() =>
+                  router.push(`/(host)/reservation/${r.id}` as Href)
+                }
                 className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface shadow-sm"
               >
                 <View className="flex-row gap-3 p-3">
@@ -130,7 +147,10 @@ export function HostReservationsView() {
                   <View className="flex-row gap-2 px-3 pb-3">
                     <Pressable
                       disabled={acceptReservation.isPending}
-                      onPress={() => acceptReservation.mutate(r.id)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        acceptReservation.mutate(r.id);
+                      }}
                       className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#F0FDF4]"
                     >
                       <Text className="font-inter-semibold text-[11px] text-[#00C950]">
@@ -139,7 +159,10 @@ export function HostReservationsView() {
                     </Pressable>
                     <Pressable
                       disabled={rejectReservation.isPending}
-                      onPress={() => rejectReservation.mutate(r.id)}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        rejectReservation.mutate(r.id);
+                      }}
                       className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
                     >
                       <Text className="font-inter-semibold text-[11px] text-[#FB2C36]">
@@ -148,7 +171,7 @@ export function HostReservationsView() {
                     </Pressable>
                   </View>
                 ) : null}
-              </View>
+              </Pressable>
             );
           })
         )}

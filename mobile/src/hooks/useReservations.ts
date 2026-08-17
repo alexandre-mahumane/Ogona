@@ -86,6 +86,17 @@ export function useHostReservations(params?: { status?: string; search?: string 
   });
 }
 
+export function useHostReservation(id: string | undefined) {
+  return useQuery({
+    queryKey: [...reservationKeys.host(), id ?? ''],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const row = await reservationsApi.hostById(id!);
+      return mapHostReservation(row);
+    },
+  });
+}
+
 export function useAcceptReservation() {
   const qc = useQueryClient();
   return useMutation({

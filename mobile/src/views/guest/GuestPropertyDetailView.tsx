@@ -5,6 +5,7 @@ import { useMemo, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { FavoriteButton, StickyFooter } from '@/components/guest/GuestChrome';
+import { ImageLightbox } from '@/components/guest/ImageLightbox';
 import { Screen, Text } from '@/components/ui';
 import { usePropertyDetail, useToggleFavorite } from '@/hooks/useDiscover';
 import { colors } from '@/theme/colors';
@@ -31,6 +32,13 @@ export function GuestPropertyDetailView() {
   const toggleFavorite = useToggleFavorite();
   const listing = propertyQuery.data;
   const [tab, setTab] = useState<TabId>('details');
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+
+  const openGallery = (index: number) => {
+    setGalleryIndex(index);
+    setGalleryOpen(true);
+  };
 
   const totalReviews = useMemo(
     () =>
@@ -57,9 +65,15 @@ export function GuestPropertyDetailView() {
   }
 
   const goBook = (roomId?: string) => {
-    const q = roomId ? `?roomId=${roomId}` : '';
-    router.push(`/(guest)/book/${listing.id}${q}`);
+    router.push({
+      pathname: '/(guest)/book/[id]',
+      params: roomId ? { id: listing.id, roomId } : { id: listing.id },
+    });
   };
+
+  const galleryImages = listing.images.length
+    ? listing.images
+    : [listing.image];
 
   return (
     <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard={false}>
@@ -68,7 +82,10 @@ export function GuestPropertyDetailView() {
         showsVerticalScrollIndicator={false}
         contentContainerClassName="pb-6"
       >
-        <View className="relative h-[200px] w-full bg-surface-muted">
+        <Pressable
+          onPress={() => openGallery(0)}
+          className="relative h-[200px] w-full bg-surface-muted"
+        >
           <Image
             source={{ uri: listing.image }}
             style={{ width: '100%', height: 200 }}
@@ -91,7 +108,7 @@ export function GuestPropertyDetailView() {
               }
             />
           </View>
-        </View>
+        </Pressable>
 
         <View className="gap-4 px-6 pt-5">
           <View className="gap-2">
@@ -169,11 +186,13 @@ export function GuestPropertyDetailView() {
                     className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface"
                   >
                     <View className="flex-row gap-3 p-3">
+                    <Pressable onPress={() => openGallery(0)}>
                       <Image
                         source={{ uri: room.image }}
                         style={{ width: 72, height: 72, borderRadius: 12 }}
                         contentFit="cover"
                       />
+                    </Pressable>
                       <View className="flex-1 justify-between py-0.5">
                         <View>
                           <Text variant="label-s">{room.name}</Text>
@@ -202,9 +221,10 @@ export function GuestPropertyDetailView() {
 
           {tab === 'photos' ? (
             <View className="flex-row flex-wrap gap-2">
-              {listing.images.map((uri, i) => (
-                <View
+              {galleryImages.map((uri, i) => (
+                <Pressable
                   key={`${uri}-${i}`}
+                  onPress={() => openGallery(i)}
                   className="overflow-hidden rounded-xl"
                   style={{ width: '48.5%' }}
                 >
@@ -213,7 +233,7 @@ export function GuestPropertyDetailView() {
                     style={{ width: '100%', height: 120 }}
                     contentFit="cover"
                   />
-                </View>
+                </Pressable>
               ))}
             </View>
           ) : null}
@@ -317,6 +337,12 @@ export function GuestPropertyDetailView() {
           </Text>
         </Pressable>
       </StickyFooter>
+      <ImageLightbox
+        images={galleryImages}
+        index={galleryIndex}
+        visible={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+      />
     </Screen>
   );
 }

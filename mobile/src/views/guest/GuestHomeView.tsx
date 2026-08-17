@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { CityCard, ListingCard } from '@/components/guest/ListingCard';
@@ -9,18 +9,43 @@ import { SectionHeader } from '@/components/guest/GuestChrome';
 import { Screen, Text } from '@/components/ui';
 import { guestHome } from '@/data/guest.mock';
 import { useDiscoverHome } from '@/hooks/useDiscover';
+import { useFiltersStore } from '@/stores/filters.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { colors } from '@/theme/colors';
+
+const categoryType: Record<string, string | undefined> = {
+  all: undefined,
+  apartments: 'apartamento',
+  houses: 'casa',
+  rooms: 'pensao',
+  hotels: 'hotel',
+};
 
 export function GuestHomeView() {
   const [category, setCategory] = useState(guestHome.categories[0]?.id ?? 'all');
   const user = useAuthStore((s) => s.user);
+  const patchFilters = useFiltersStore((s) => s.patchFilters);
   const home = useDiscoverHome();
 
   const greetingName = user?.name?.split(' ')[0] ?? guestHome.greetingName;
-  const nearYou = home.data?.nearYou ?? [];
-  const mostBooked = home.data?.mostBooked ?? [];
+  const type = categoryType[category];
+  const nearYou = useMemo(() => {
+    const rows = home.data?.nearYou ?? [];
+    return type ? rows.filter((l) => l.propertyType === type) : rows;
+  }, [home.data?.nearYou, type]);
+  const mostBooked = useMemo(() => {
+    const rows = home.data?.mostBooked ?? [];
+    return type ? rows.filter((l) => l.propertyType === type) : rows;
+  }, [home.data?.mostBooked, type]);
   const cities = home.data?.cities ?? [];
+
+  const openFilters = () => router.push('/(guest)/filters');
+  const openExplore = (city?: string) => {
+    if (city) patchFilters({ destination: city });
+    router.push('/(guest)/(tabs)/explore');
+  };
+  const openProperty = (id: string) =>
+    router.push({ pathname: '/(guest)/property/[id]', params: { id } });
 
   return (
     <Screen
@@ -57,7 +82,7 @@ export function GuestHomeView() {
 
         <View className="flex-row items-center gap-2">
           <Pressable
-            onPress={() => router.push('/(guest)/(tabs)/explore')}
+            onPress={() => openExplore()}
             className="h-14 flex-1 flex-row items-center gap-3 rounded-xl border border-surface-border bg-surface px-4"
           >
             <Ionicons name="search" size={20} color={colors.ink.secondary} />
@@ -66,7 +91,7 @@ export function GuestHomeView() {
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push('/(guest)/filters')}
+            onPress={openFilters}
             className="h-14 flex-row items-center gap-2 rounded-xl border border-surface-border bg-surface px-4"
           >
             <Ionicons
@@ -133,45 +158,53 @@ export function GuestHomeView() {
           <View className="gap-4">
             <SectionHeader
               title="Perto de si"
-              onAction={() => router.push('/(guest)/(tabs)/explore')}
+              onAction={() => openExplore()}
             />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerClassName="gap-3"
             >
-              {nearYou.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  variant="small"
-                  onPress={() => router.push(`/(guest)/property/${listing.id}`)}
-                />
-              ))}
+              {nearYou.length === 0 ? (
+                <Text variant="p-s">Nenhum alojamento nesta categoria</Text>
+              ) : (
+                nearYou.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    variant="small"
+                    onPress={() => openProperty(listing.id)}
+                  />
+                ))
+              )}
             </ScrollView>
           </View>
 
           <View className="gap-4">
             <SectionHeader
               title="Mais reservados"
-              onAction={() => router.push('/(guest)/(tabs)/explore')}
+              onAction={() => openExplore()}
             />
             <View className="gap-3">
-              {mostBooked.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  variant="medium"
-                  onPress={() => router.push(`/(guest)/property/${listing.id}`)}
-                />
-              ))}
+              {mostBooked.length === 0 ? (
+                <Text variant="p-s">Nenhum alojamento nesta categoria</Text>
+              ) : (
+                mostBooked.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    variant="medium"
+                    onPress={() => openProperty(listing.id)}
+                  />
+                ))
+              )}
             </View>
           </View>
 
           <View className="gap-4">
             <SectionHeader
               title="Explore por cidade"
-              onAction={() => router.push('/(guest)/(tabs)/explore')}
+              onAction={() => openExplore()}
             />
             <ScrollView
               horizontal
@@ -184,7 +217,7 @@ export function GuestHomeView() {
                   name={city.name}
                   count={city.count}
                   image={city.image}
-                  onPress={() => router.push('/(guest)/(tabs)/explore')}
+                  onPress={() => openExplore(city.name)}
                 />
               ))}
             </ScrollView>

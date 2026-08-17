@@ -53,7 +53,12 @@ export function GuestFavoritesView() {
               key={listing.id}
               listing={{ ...listing, favorite: true }}
               variant="search"
-              onPress={() => router.push(`/(guest)/property/${listing.id}`)}
+              onPress={() =>
+                router.push({
+                  pathname: '/(guest)/property/[id]',
+                  params: { id: listing.id },
+                })
+              }
             />
           ))}
         </View>

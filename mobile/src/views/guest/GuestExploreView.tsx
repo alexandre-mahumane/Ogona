@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 import { ListingCard } from '@/components/guest/ListingCard';
@@ -11,28 +11,61 @@ import {
   useDiscoverSearch,
   usePopularDestinations,
 } from '@/hooks/useDiscover';
+import {
+  filtersAreActive,
+  filtersToSearchParams,
+  useFiltersStore,
+} from '@/stores/filters.store';
 import { colors } from '@/theme/colors';
 
 type ExploreState = 'idle' | 'typing' | 'results';
 
 export function GuestExploreView() {
-  const [query, setQuery] = useState('');
-  const [submitted, setSubmitted] = useState('');
-  const [mode, setMode] = useState<ExploreState>('idle');
+  const filters = useFiltersStore((s) => s.filters);
+  const hasFilters = filtersAreActive(filters);
+  const [query, setQuery] = useState(filters.destination);
+  const [submitted, setSubmitted] = useState(filters.destination);
+  const [mode, setMode] = useState<ExploreState>(hasFilters ? 'results' : 'idle');
+
+  useEffect(() => {
+    if (!hasFilters) return;
+    setQuery(filters.destination);
+    setSubmitted(filters.destination);
+    setMode('results');
+  }, [hasFilters, filters]);
 
   const destinations = usePopularDestinations();
+  const searchParams = useMemo(
+    () => ({
+      ...filtersToSearchParams({
+        ...filters,
+        destination: submitted || filters.destination,
+      }),
+      limit: 30,
+    }),
+    [filters, submitted],
+  );
   const search = useDiscoverSearch(
-    { q: submitted || query, limit: 30 },
-    mode === 'typing' || mode === 'results',
+    searchParams,
+    mode === 'typing' || mode === 'results' || hasFilters,
   );
 
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return (search.data ?? []).filter((l) => l.name.toLowerCase().includes(q)).slice(0, 8);
+    return (search.data ?? [])
+      .filter((l) => l.name.toLowerCase().includes(q))
+      .slice(0, 8);
   }, [query, search.data]);
 
-  const results = search.data ?? [];
+  const results = useMemo(() => {
+    const rows = search.data ?? [];
+    if (filters.types.length <= 1) return rows;
+    return rows.filter(
+      (l) => l.propertyType && filters.types.includes(l.propertyType),
+    );
+  }, [search.data, filters.types]);
+
   const popular = destinations.data ?? [];
 
   const goResults = (nextQuery?: string) => {
@@ -47,6 +80,9 @@ export function GuestExploreView() {
     if (value.trim().length > 0) {
       setSubmitted(value.trim());
       setMode('typing');
+    } else if (hasFilters) {
+      setSubmitted('');
+      setMode('results');
     } else {
       setMode('idle');
     }
@@ -55,7 +91,7 @@ export function GuestExploreView() {
   const clearQuery = () => {
     setQuery('');
     setSubmitted('');
-    setMode('idle');
+    setMode(hasFilters ? 'results' : 'idle');
   };
 
   return (
@@ -72,7 +108,7 @@ export function GuestExploreView() {
             value={query}
             onChangeText={onChangeQuery}
             onSubmitEditing={() => {
-              if (query.trim().length > 0) goResults();
+              if (query.trim().length > 0 || hasFilters) goResults();
             }}
             placeholder="Cidade bairro ou alojamento"
             placeholderTextColor={colors.ink.soft}
@@ -152,7 +188,12 @@ export function GuestExploreView() {
                 {suggestions.map((listing) => (
                   <Pressable
                     key={listing.id}
-                    onPress={() => router.push(`/(guest)/property/${listing.id}`)}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(guest)/property/[id]',
+                        params: { id: listing.id },
+                      })
+                    }
                     className="flex-row items-center gap-3 py-3"
                   >
                     <View className="h-11 w-11 overflow-hidden rounded-full border border-surface-border">
@@ -201,12 +242,27 @@ export function GuestExploreView() {
                   color={colors.brand.DEFAULT}
                 />
                 <Text className="font-inter-semibold text-[13px] text-brand">
-                  Filtrar
+                  {hasFilters ? 'Filtros activos' : 'Filtrar'}
                 </Text>
               </Pressable>
             </View>
-            {search.isLoading ? (
+            {search.isError ? (
+              <View className="gap-2 py-6">
+                <Text variant="p-s">
+                  {search.error instanceof Error
+                    ? search.error.message
+                    : 'Não foi possível pesquisar'}
+                </Text>
+                <Pressable onPress={() => void search.refetch()}>
+                  <Text className="font-inter-semibold text-brand">
+                    Tentar novamente
+                  </Text>
+                </Pressable>
+              </View>
+            ) : search.isLoading ? (
               <ActivityIndicator color={colors.brand.DEFAULT} />
+            ) : results.length === 0 ? (
+              <Text variant="p-s">Nenhum alojamento encontrado</Text>
             ) : (
               <View className="gap-4">
                 {results.map((listing) => (
@@ -214,7 +270,12 @@ export function GuestExploreView() {
                     key={listing.id}
                     listing={listing}
                     variant="search"
-                    onPress={() => router.push(`/(guest)/property/${listing.id}`)}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(guest)/property/[id]',
+                        params: { id: listing.id },
+                      })
+                    }
                   />
                 ))}
               </View>

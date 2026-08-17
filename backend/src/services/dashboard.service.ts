@@ -1,8 +1,8 @@
-import { propertyRepository } from '../repositories/property.repository';
+import { dashboardRepository } from '../repositories/dashboard.repository';
 import { reservationRepository } from '../repositories/reservation.repository';
 import { toPublicReservation } from '../repositories/reservation.mappers';
 import { activityService } from './activity.service';
-import { addDays, startOfMonth, todayUtc } from '../utils/dates';
+import { startOfMonth, todayUtc } from '../utils/dates';
 
 export class DashboardService {
   async getHostDashboard(hostId: string) {
@@ -17,55 +17,36 @@ export class DashboardService {
       now.getUTCMonth() === 0 ? 12 : now.getUTCMonth(),
     );
 
-    const [
-      monthlyRevenue,
-      previousRevenue,
-      reservationsCount,
-      pendingCount,
-      roomsCount,
-      availableRooms,
-      activeProperties,
-      activities,
-      pendingRows,
-      confirmedAroundToday,
-    ] = await Promise.all([
-      reservationRepository.paidRevenueBetween(hostId, monthStart, nextMonthStart),
-      reservationRepository.paidRevenueBetween(hostId, prevMonthStart, monthStart),
-      reservationRepository.countByHost(hostId),
-      reservationRepository.countPendingByHost(hostId),
-      propertyRepository.countRoomsByHost(hostId),
-      propertyRepository.countAvailableRooms(hostId),
-      propertyRepository.countByHost(hostId, 'published'),
+    const [snapshot, activities, pendingRows] = await Promise.all([
+      dashboardRepository.getHostSnapshot(hostId, {
+        today: now,
+        monthStart,
+        nextMonthStart,
+        prevMonthStart,
+      }),
       activityService.listForHost(hostId, 10),
       reservationRepository.listPendingForHost(hostId, 5),
-      reservationRepository.listConfirmedInRange(
-        hostId,
-        addDays(now, -1),
-        addDays(now, 1),
-      ),
     ]);
 
     const revenueTrend =
-      previousRevenue === 0
-        ? monthlyRevenue > 0
+      snapshot.previousRevenue === 0
+        ? snapshot.monthlyRevenue > 0
           ? 100
           : 0
-        : Number((((monthlyRevenue - previousRevenue) / previousRevenue) * 100).toFixed(1));
+        : Number(
+            (
+              ((snapshot.monthlyRevenue - snapshot.previousRevenue) /
+                snapshot.previousRevenue) *
+              100
+            ).toFixed(1),
+          );
 
     const occupancyRate =
-      roomsCount === 0 ? 0 : Number(((1 - availableRooms / roomsCount) * 100).toFixed(0));
-
-    const checkInsToday = confirmedAroundToday.filter((r) => {
-      const d =
-        r.checkInDate instanceof Date ? r.checkInDate : new Date(r.checkInDate);
-      return d.getTime() === now.getTime() && r.status === 'confirmed';
-    }).length;
-
-    const checkOutsToday = confirmedAroundToday.filter((r) => {
-      const d =
-        r.checkOutDate instanceof Date ? r.checkOutDate : new Date(r.checkOutDate);
-      return d.getTime() === now.getTime() && ['confirmed', 'completed'].includes(r.status);
-    }).length;
+      snapshot.roomsCount === 0
+        ? 0
+        : Number(
+            ((1 - snapshot.availableRooms / snapshot.roomsCount) * 100).toFixed(0),
+          );
 
     const pendingRequests = pendingRows.map((row) =>
       toPublicReservation({
@@ -79,19 +60,19 @@ export class DashboardService {
 
     return {
       metrics: {
-        monthlyRevenue,
+        monthlyRevenue: snapshot.monthlyRevenue,
         revenueTrendPercent: revenueTrend,
-        reservations: reservationsCount,
-        pendingReservations: pendingCount,
-        rooms: roomsCount,
-        availableRooms,
+        reservations: snapshot.reservationsCount,
+        pendingReservations: snapshot.pendingCount,
+        rooms: snapshot.roomsCount,
+        availableRooms: snapshot.availableRooms,
         occupancyRate,
         occupancyTrendPercent: 0,
       },
       quickStats: {
-        activeProperties,
-        checkInsToday,
-        checkOutsToday,
+        activeProperties: snapshot.activeProperties,
+        checkInsToday: snapshot.checkInsToday,
+        checkOutsToday: snapshot.checkOutsToday,
       },
       pendingRequests,
       recentActivity: activities,

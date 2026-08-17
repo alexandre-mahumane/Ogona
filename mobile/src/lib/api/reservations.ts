@@ -25,7 +25,7 @@ export const reservationsApi = {
   },
 
   create(input: CreateReservationInput) {
-    return apiClient<{ reservation: ApiReservation }>('/reservations/', {
+    return apiClient<{ reservation: ApiReservation }>('/reservations', {
       method: 'POST',
       body: input,
     }).then((d) => d.reservation);

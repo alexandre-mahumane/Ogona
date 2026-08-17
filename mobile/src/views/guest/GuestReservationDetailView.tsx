@@ -169,7 +169,10 @@ export function GuestReservationDetailView() {
           {reservation.canPay ? (
             <Button
               onPress={() =>
-                router.push(`/(guest)/pay/${reservation.id}`)
+                router.push({
+                  pathname: '/(guest)/pay/[id]',
+                  params: { id: reservation.id },
+                })
               }
             >
               Efectuar pagamento
@@ -178,7 +181,10 @@ export function GuestReservationDetailView() {
           {reservation.canReview ? (
             <Button
               onPress={() =>
-                router.push(`/(guest)/review/${reservation.id}`)
+                router.push({
+                  pathname: '/(guest)/review/[id]',
+                  params: { id: reservation.id },
+                })
               }
             >
               Avaliar estadia

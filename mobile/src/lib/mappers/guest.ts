@@ -71,6 +71,7 @@ export function mapDiscoverCardToListing(card: DiscoverCard): GuestListing {
     reviewCount: card.rating.total,
     image: card.coverImageUrl ?? PLACEHOLDER_IMAGE,
     images: card.coverImageUrl ? [card.coverImageUrl] : [PLACEHOLDER_IMAGE],
+    propertyType: card.type,
     badge: card.available
       ? { label: 'Disponível', tone: 'green' }
       : { label: 'Indisponível', tone: 'orange' },
@@ -172,6 +173,7 @@ export function mapPropertyDetail(
     reviewCount: property.rating.total,
     image: images[0] ?? PLACEHOLDER_IMAGE,
     images: images.length ? images : [PLACEHOLDER_IMAGE],
+    propertyType: property.type,
     badge: { label: 'Disponível', tone: 'green' },
     favorite: property.isFavorite,
     amenities: [

@@ -9,7 +9,7 @@ export const reviewsApi = {
         rating: number;
         comment: string | null;
       };
-    }>('/reviews/', {
+    }>('/reviews', {
       method: 'POST',
       body: input,
     }).then((d) => d.review);

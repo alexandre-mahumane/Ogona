@@ -1,6 +1,6 @@
 import { tokenStorage } from '@/lib/storage/secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://mobilesmsser.qzz.io/api/v1';
 
 export class ApiError extends Error {
   constructor(
