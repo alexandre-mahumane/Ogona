@@ -60,6 +60,10 @@ export class AuthController {
   }
 
   async sendPasswordOtp(req: Request, res: Response): Promise<void> {
+    console.info('[otp] http.password.send', {
+      phone: req.body?.phone,
+      channel: req.body?.channel,
+    });
     const result = await authService.sendPasswordOtp(req.body);
     res.status(200).json({
       success: true,
@@ -71,6 +75,10 @@ export class AuthController {
   }
 
   async sendRegisterOtp(req: Request, res: Response): Promise<void> {
+    console.info('[otp] http.register.send', {
+      phone: req.body?.phone,
+      channel: req.body?.channel,
+    });
     const result = await authService.sendRegisterOtp(req.body);
     res.status(200).json({
       success: true,

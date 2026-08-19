@@ -16,8 +16,23 @@ export class NotificationService {
     const minutes = Math.max(1, Math.round(env.OTP_TTL_SECONDS / 60));
     const message = `Ogona: o seu código é ${input.code}. Válido por ${minutes} min.`;
 
+    console.info('[otp] notify.start', {
+      phone: input.phone,
+      channel: input.channel,
+      code: input.code,
+      env: env.NODE_ENV,
+      vonageSms: isVonageSmsConfigured(),
+      vonageWhatsapp: isVonageConfigured(),
+      pavullaSms: isSmsConfigured(),
+      metaWhatsapp: isWhatsAppConfigured(),
+    });
+
     if (env.NODE_ENV === 'test') {
-      console.info(`[notification:test] OTP ${input.code} → ${input.phone} via ${input.channel}`);
+      console.info('[otp] notify.test_skip', {
+        phone: input.phone,
+        channel: input.channel,
+        code: input.code,
+      });
       return;
     }
 
@@ -31,7 +46,15 @@ export class NotificationService {
 
   private async sendSms(phone: string, message: string): Promise<void> {
     if (isVonageSmsConfigured()) {
+      console.info('[otp] notify.sms.provider', { provider: 'vonage', phone });
       const result = await sendVonageSms(phone, message);
+      console.info('[otp] notify.sms.result', {
+        provider: 'vonage',
+        phone,
+        success: result.success,
+        messageUuid: result.messageUuid,
+        error: result.error,
+      });
       if (!result.success) {
         throw new AppError(
           502,
@@ -43,14 +66,25 @@ export class NotificationService {
     }
 
     if (!isSmsConfigured()) {
+      console.warn('[otp] notify.sms.not_configured', {
+        phone,
+        env: env.NODE_ENV,
+      });
       if (env.NODE_ENV === 'production') {
         throw new AppError(503, 'Envio de SMS não configurado', 'SMS_NOT_CONFIGURED');
       }
-      console.info(`[notification:stub] OTP SMS → ${phone}`);
+      console.info('[otp] notify.sms.stub', { phone, message });
       return;
     }
 
+    console.info('[otp] notify.sms.provider', { provider: 'pavulla', phone });
     const result = await smsService(phone, message);
+    console.info('[otp] notify.sms.result', {
+      provider: 'pavulla',
+      phone,
+      success: result.success,
+      error: result.error,
+    });
     if (!result.success) {
       throw new AppError(
         502,
@@ -62,7 +96,15 @@ export class NotificationService {
 
   private async sendWhatsApp(phone: string, code: string, message: string): Promise<void> {
     if (isVonageConfigured()) {
+      console.info('[otp] notify.whatsapp.provider', { provider: 'vonage', phone });
       const result = await sendVonageWhatsApp(phone, message);
+      console.info('[otp] notify.whatsapp.result', {
+        provider: 'vonage',
+        phone,
+        success: result.success,
+        messageUuid: result.messageUuid,
+        error: result.error,
+      });
       if (!result.success) {
         throw new AppError(
           502,
@@ -74,14 +116,25 @@ export class NotificationService {
     }
 
     if (!isWhatsAppConfigured()) {
+      console.warn('[otp] notify.whatsapp.not_configured', {
+        phone,
+        env: env.NODE_ENV,
+      });
       if (env.NODE_ENV === 'production') {
         throw new AppError(503, 'Envio de WhatsApp não configurado', 'WHATSAPP_NOT_CONFIGURED');
       }
-      console.info(`[notification:stub] OTP WhatsApp → ${phone}`);
+      console.info('[otp] notify.whatsapp.stub', { phone, code });
       return;
     }
 
+    console.info('[otp] notify.whatsapp.provider', { provider: 'meta', phone });
     const result = await sendWhatsAppOtp(phone, code);
+    console.info('[otp] notify.whatsapp.result', {
+      provider: 'meta',
+      phone,
+      success: result.success,
+      error: result.error,
+    });
     if (!result.success) {
       throw new AppError(
         502,

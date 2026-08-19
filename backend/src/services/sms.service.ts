@@ -51,6 +51,13 @@ export async function smsService(to: string, message: string): Promise<SmsResult
     return { success: false, error: 'SMS não configurado (PAVULLA_API_KEY / SMS_PROVIDER_ID)' };
   }
 
+  const recipient = toRecipient(to);
+  console.info('[otp] pavulla.request', {
+    recipient,
+    sender: env.PAVULLA_SMS_SENDER.trim() || null,
+    providerId: env.SMS_PROVIDER_ID,
+  });
+
   try {
     const response = await fetch(PAVULLA_MESSAGES_URL, {
       method: 'POST',
@@ -61,25 +68,33 @@ export async function smsService(to: string, message: string): Promise<SmsResult
       },
       body: JSON.stringify({
         ...(env.PAVULLA_SMS_SENDER.trim() ? { sender: env.PAVULLA_SMS_SENDER.trim() } : {}),
-        recipient: toRecipient(to),
+        recipient,
         content: message,
         provider_id: env.SMS_PROVIDER_ID,
       }),
     });
 
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = await response.text();
+    }
+
+    console.info('[otp] pavulla.response', {
+      recipient,
+      status: response.status,
+      ok: response.ok,
+      payload,
+    });
+
     if (!response.ok) {
-      let payload: unknown = null;
-      try {
-        payload = await response.json();
-      } catch {
-        payload = await response.text();
-      }
       return { success: false, error: pavullaErrorMessage(payload, response.status) };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('[sms] Pavulla request failed', error);
+    console.error('[otp] pavulla.failed', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Falha ao enviar SMS',

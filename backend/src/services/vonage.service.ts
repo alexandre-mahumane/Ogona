@@ -116,6 +116,11 @@ export async function sendVonageSms(to: string, text: string): Promise<VonageRes
       text,
     });
 
+    console.info('[otp] vonage.sms.request', {
+      to: toRecipient(to),
+      from: env.VONAGE_SMS_FROM,
+    });
+
     const response = await fetch(env.VONAGE_SMS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -138,6 +143,13 @@ export async function sendVonageSms(to: string, text: string): Promise<VonageRes
         : null;
 
     const status = message && typeof message.status === 'string' ? message.status : null;
+    console.info('[otp] vonage.sms.response', {
+      httpStatus: response.status,
+      ok: response.ok,
+      messageStatus: status,
+      payload,
+    });
+
     if (!response.ok || status !== '0') {
       const errorText =
         message && typeof message['error-text'] === 'string'
@@ -151,7 +163,7 @@ export async function sendVonageSms(to: string, text: string): Promise<VonageRes
       messageUuid: typeof message?.['message-id'] === 'string' ? message['message-id'] : undefined,
     };
   } catch (error) {
-    console.error('[vonage] SMS API request failed', error);
+    console.error('[otp] vonage.sms.failed', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Falha ao enviar SMS Vonage',

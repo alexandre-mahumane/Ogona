@@ -95,18 +95,32 @@ export class AuthService {
   }
 
   async sendPasswordOtp(input: SendOtpInput) {
+    console.info('[otp] password.send.start', {
+      phone: input.phone,
+      channel: input.channel,
+    });
+
     const user = await userRepository.findByPhone(input.phone);
     if (!user) {
+      console.warn('[otp] password.send.user_not_found', { phone: input.phone });
       throw new NotFoundError('Conta não encontrada com este número');
     }
 
     const code = generateOtpCode();
     await otpStore.saveOtp(input.phone, input.channel, code);
+    console.info('[otp] password.send.saved', {
+      phone: input.phone,
+      channel: input.channel,
+      code,
+    });
+
     await notificationService.sendOtp({
       phone: input.phone,
       code,
       channel: input.channel,
     });
+
+    console.info('[otp] password.send.done', { phone: input.phone, channel: input.channel });
 
     return {
       phone: input.phone,
@@ -116,18 +130,32 @@ export class AuthService {
   }
 
   async sendRegisterOtp(input: SendOtpInput) {
+    console.info('[otp] register.send.start', {
+      phone: input.phone,
+      channel: input.channel,
+    });
+
     const existing = await userRepository.findByPhone(input.phone);
     if (existing) {
+      console.warn('[otp] register.send.phone_exists', { phone: input.phone });
       throw new ConflictError('Número de celular já registado');
     }
 
     const code = generateOtpCode();
     await otpStore.saveOtp(input.phone, input.channel, code, 'register');
+    console.info('[otp] register.send.saved', {
+      phone: input.phone,
+      channel: input.channel,
+      code,
+    });
+
     await notificationService.sendOtp({
       phone: input.phone,
       code,
       channel: input.channel,
     });
+
+    console.info('[otp] register.send.done', { phone: input.phone, channel: input.channel });
 
     return {
       phone: input.phone,
@@ -137,19 +165,24 @@ export class AuthService {
   }
 
   async verifyPasswordOtp(input: VerifyOtpInput) {
+    console.info('[otp] password.verify.start', { phone: input.phone, code: input.code });
     const user = await userRepository.findByPhone(input.phone);
     if (!user) {
+      console.warn('[otp] password.verify.user_not_found', { phone: input.phone });
       throw new NotFoundError('Conta não encontrada com este número');
     }
 
     await otpStore.verifyOtp(input.phone, input.code);
     const resetToken = await otpStore.createResetToken(user.id);
+    console.info('[otp] password.verify.ok', { phone: input.phone });
 
     return { resetToken };
   }
 
   async verifyRegisterOtp(input: VerifyOtpInput) {
+    console.info('[otp] register.verify.start', { phone: input.phone, code: input.code });
     await otpStore.verifyOtp(input.phone, input.code, 'register');
+    console.info('[otp] register.verify.ok', { phone: input.phone });
     return { verified: true };
   }
 

@@ -30,7 +30,16 @@ export class OtpStore {
     purpose: 'reset' | 'register' = 'reset',
   ): Promise<void> {
     const payload: OtpPayload = { code, channel, attempts: 0 };
-    await redis.set(otpKey(phone, purpose), JSON.stringify(payload), 'EX', env.OTP_TTL_SECONDS);
+    const key = otpKey(phone, purpose);
+    await redis.set(key, JSON.stringify(payload), 'EX', env.OTP_TTL_SECONDS);
+    console.info('[otp] redis.saved', {
+      key,
+      phone,
+      purpose,
+      channel,
+      code,
+      ttlSeconds: env.OTP_TTL_SECONDS,
+    });
   }
 
   async getOtp(
@@ -52,11 +61,13 @@ export class OtpStore {
     const key = otpKey(phone, purpose);
     const payload = await this.getOtp(phone, purpose);
     if (!payload) {
+      console.warn('[otp] redis.missing', { key, phone, purpose, code });
       throw new UnauthorizedError('Código expirado ou inválido');
     }
 
     if (payload.attempts >= env.OTP_MAX_ATTEMPTS) {
       await redis.del(key);
+      console.warn('[otp] redis.max_attempts', { key, phone, purpose });
       throw new UnauthorizedError('Demasiadas tentativas. Peça um novo código');
     }
 
@@ -69,10 +80,19 @@ export class OtpStore {
         'EX',
         ttl > 0 ? ttl : env.OTP_TTL_SECONDS,
       );
+      console.warn('[otp] redis.mismatch', {
+        key,
+        phone,
+        purpose,
+        expected: payload.code,
+        received: code,
+        attempts: payload.attempts,
+      });
       throw new ValidationError('Código inválido');
     }
 
     await redis.del(key);
+    console.info('[otp] redis.verified', { key, phone, purpose });
   }
 
   async createResetToken(userId: string): Promise<string> {

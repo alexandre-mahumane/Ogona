@@ -19,6 +19,11 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof AppError) {
+    console.warn('[http] app_error', {
+      status: err.statusCode,
+      code: err.code,
+      message: err.message,
+    });
     res.status(err.statusCode).json({
       success: false,
       error: {
