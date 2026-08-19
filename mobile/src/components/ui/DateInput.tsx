@@ -35,7 +35,9 @@ export function DateField({
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
-        className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-4"
+        className={`h-[54px] flex-row items-center justify-between rounded-input border bg-surface px-4 ${
+          error ? 'border-danger' : 'border-surface-border'
+        }`}
       >
         <Text
           variant="p-s"
@@ -46,9 +48,7 @@ export function DateField({
         <Ionicons name={icon} size={18} color={colors.ink.soft} />
       </Pressable>
       {error ? (
-        <Text variant="p-s" className="text-danger">
-          {error}
-        </Text>
+        <Text variant="error">{error}</Text>
       ) : null}
     </View>
   );

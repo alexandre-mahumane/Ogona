@@ -283,7 +283,7 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
               <View className="gap-4">
                 <Input
                   label="Nome completo"
-                  placeholder="Osvaldo Temde"
+                  placeholder="Nome completo"
                   value={account.name}
                   onChangeText={(value) => setAccountField('name', value)}
                 />
@@ -321,9 +321,7 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
                   onToggle={() => setAcceptTerms((value) => !value)}
                 />
                 {error || formError ? (
-                  <Text variant="p-s" className="text-danger">
-                    {error ?? formError}
-                  </Text>
+                  <Text variant="error">{error ?? formError}</Text>
                 ) : null}
                 <View className="gap-4">
                   <Button
@@ -339,9 +337,7 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
             ) : (
               <View className="gap-4">
                 {formError ? (
-                  <Text variant="p-s" className="text-danger">
-                    {formError}
-                  </Text>
+                  <Text variant="error">{formError}</Text>
                 ) : null}
                 <Button
                   disabled={!accountValid}
@@ -484,9 +480,7 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
                 onToggle={() => setAcceptTerms((value) => !value)}
               />
               {error || formError ? (
-                <Text variant="p-s" className="text-danger">
-                  {error ?? formError}
-                </Text>
+                <Text variant="error">{error ?? formError}</Text>
               ) : null}
               <View className="gap-4">
                 <Button

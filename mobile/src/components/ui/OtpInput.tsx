@@ -16,7 +16,7 @@ type Props = {
   error?: string;
 };
 
-export function OtpInput({ value, onChange, length = 4 }: Props) {
+export function OtpInput({ value, onChange, length = 4, error }: Props) {
   const refs = useRef<Array<TextInput | null>>([]);
   const digits = value.padEnd(length, ' ').slice(0, length).split('');
   const [focused, setFocused] = useState(0);
@@ -47,7 +47,11 @@ export function OtpInput({ value, onChange, length = 4 }: Props) {
           key={index}
           onPress={() => refs.current[index]?.focus()}
           className={`h-[54px] w-[54px] items-center justify-center rounded-input border ${
-            focused === index ? 'border-brand' : 'border-surface-border'
+            error
+              ? 'border-danger'
+              : focused === index
+                ? 'border-brand'
+                : 'border-surface-border'
           }`}
         >
           <TextInput

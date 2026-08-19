@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
 import { Text as RNText, type TextProps } from 'react-native';
 
+import { colors } from '@/theme/colors';
+
 type Variant =
   | 'h3'
   | 'h4'
@@ -12,7 +14,8 @@ type Variant =
   | 'label-m'
   | 'label-s'
   | 'label-xs'
-  | 'logo';
+  | 'logo'
+  | 'error';
 
 type Props = TextProps & {
   children: ReactNode;
@@ -32,16 +35,22 @@ const variants: Record<Variant, string> = {
   'label-s': 'font-inter-semibold text-label-s text-ink',
   'label-xs': 'font-inter-semibold text-label-xs text-ink-secondary',
   logo: 'font-oxygen text-[20px] leading-7 text-brand',
+  error: 'font-inter text-p-s',
 };
 
 export function Text({
   children,
   variant = 'p-m',
   className = '',
+  style,
   ...props
 }: Props) {
   return (
-    <RNText className={`${variants[variant]} ${className}`} {...props}>
+    <RNText
+      className={`${variants[variant]} ${className}`}
+      style={[variant === 'error' ? { color: colors.danger } : undefined, style]}
+      {...props}
+    >
       {children}
     </RNText>
   );

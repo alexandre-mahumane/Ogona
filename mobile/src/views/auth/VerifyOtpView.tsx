@@ -45,13 +45,9 @@ export function VerifyOtpView({
           </Text>
         </View>
 
-        <OtpInput value={code} onChange={setCode} />
+        <OtpInput value={code} onChange={setCode} error={error ?? undefined} />
 
-        {error ? (
-          <Text variant="p-s" className="text-danger">
-            {error}
-          </Text>
-        ) : null}
+        {error ? <Text variant="error">{error}</Text> : null}
 
         <View className="w-full items-center gap-4">
           <Button

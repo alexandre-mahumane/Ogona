@@ -86,9 +86,7 @@ export function LoginView({ onSubmit, loading, error }: Props) {
           </View>
 
           {error ? (
-            <Text variant="p-s" className="text-danger">
-              {error}
-            </Text>
+            <Text variant="error">{error}</Text>
           ) : null}
 
           <Button

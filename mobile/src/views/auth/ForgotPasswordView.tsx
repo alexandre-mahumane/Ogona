@@ -52,9 +52,7 @@ export function ForgotPasswordView({ onSubmit, loading, error }: Props) {
         />
 
         {error ? (
-          <Text variant="p-s" className="text-danger">
-            {error}
-          </Text>
+          <Text variant="error">{error}</Text>
         ) : null}
 
         <Button

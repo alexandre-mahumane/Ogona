@@ -41,7 +41,11 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           {required ? <Text variant="label-xs" className="text-brand"> *</Text> : null}
         </Text>
       ) : null}
-      <View className="h-[54px] flex-row items-center rounded-input border border-surface-border bg-surface px-4">
+      <View
+        className={`h-[54px] flex-row items-center rounded-input border bg-surface px-4 ${
+          error ? 'border-danger' : 'border-surface-border'
+        }`}
+      >
         <TextInput
           ref={ref}
           placeholderTextColor={colors.ink.soft}
@@ -65,9 +69,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         ) : null}
       </View>
       {error ? (
-        <Text variant="p-s" className="text-danger">
-          {error}
-        </Text>
+        <Text variant="error">{error}</Text>
       ) : null}
     </View>
   );

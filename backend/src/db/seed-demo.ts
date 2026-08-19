@@ -25,7 +25,7 @@ const GUEST = {
 };
 
 const HOST = {
-  name: 'Osvaldo Host',
+  name: 'Host',
   birthDate: '20/01/1990',
   phone: '842222222',
   password: 'senha12345',

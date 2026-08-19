@@ -72,9 +72,7 @@ export function WalletView({ onSubmit, loading, error }: Props) {
 
         <View className="gap-3">
           {error ? (
-            <Text variant="p-s" className="text-danger">
-              {error}
-            </Text>
+            <Text variant="error">{error}</Text>
           ) : null}
 
           <Button
