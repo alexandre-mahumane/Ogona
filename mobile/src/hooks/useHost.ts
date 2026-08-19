@@ -84,12 +84,15 @@ export function useCreateRoom(propertyId: string) {
   });
 }
 
-export function usePublishProperty() {
+export function useSetPropertyStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => propertiesApi.updateStatus(id, 'published'),
-    onSuccess: async () => {
+    mutationFn: ({ id, status }: { id: string; status: 'published' | 'hidden' }) =>
+      propertiesApi.updateStatus(id, status),
+    onSuccess: async (_data, vars) => {
       await qc.invalidateQueries({ queryKey: ['properties'] });
+      await qc.invalidateQueries({ queryKey: hostKeys.property(vars.id) });
+      await qc.invalidateQueries({ queryKey: hostKeys.dashboard });
     },
   });
 }

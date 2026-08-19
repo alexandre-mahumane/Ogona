@@ -103,6 +103,7 @@ export type DiscoverRoomDetail = {
   bedLabel: string | null;
   modalities: BookingModality[];
   prices: Partial<Record<BookingModality, number>>;
+  priceLimits?: Partial<Record<BookingModality, { min: number; max: number }>>;
   currency: string;
   amenities: string[];
   images: { id: string; url: string; sortOrder: number }[];

@@ -70,11 +70,11 @@ export function ListingCard({
             <View className="absolute right-2 top-2">
               <FavoriteButton active={listing.favorite} onPress={onFavorite} />
             </View>
-            {listing.badge ? (
+            {listing.distanceKm != null ? (
               <View className="absolute bottom-2 left-2">
                 <StatusBadge
-                  label={listing.badge.label}
-                  tone={listing.badge.tone}
+                  label={`${listing.distanceKm} km`}
+                  tone="blue"
                 />
               </View>
             ) : null}
@@ -94,7 +94,8 @@ export function ListingCard({
             </View>
             <View className="flex-row items-center gap-1">
               <Text variant="label-s">{listing.priceLabel}</Text>
-              <Text variant="p-xs">· {listing.priceUnit}</Text>
+              <View className="h-px w-2 bg-[#F5F5F5]" />
+              <Text variant="p-xs">{listing.priceUnit}</Text>
             </View>
           </View>
         </Pressable>
@@ -148,7 +149,8 @@ export function ListingCard({
             </View>
             <View className="flex-row items-center gap-1">
               <Text variant="label-s">{listing.priceLabel}</Text>
-              <Text variant="p-xs">· {listing.priceUnit}</Text>
+              <View className="h-px w-2 bg-[#F5F5F5]" />
+              <Text variant="p-xs">{listing.priceUnit}</Text>
             </View>
           </View>
         </Pressable>

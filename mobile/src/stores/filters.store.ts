@@ -31,9 +31,22 @@ function parsePlus(value: string) {
   return Number.isFinite(n) ? n : undefined;
 }
 
-export function filtersToSearchParams(f: FiltersState): DiscoverSearchParams {
+export type ExploreIntent = 'idle' | 'all' | 'city' | 'query';
+
+export type ExploreSession = {
+  intent: ExploreIntent;
+  nonce: number;
+};
+
+export function filtersToSearchParams(
+  f: FiltersState,
+  opts?: { match?: 'city' | 'query' },
+): DiscoverSearchParams {
+  const dest = f.destination.trim() || undefined;
+  const matchCity = opts?.match === 'city';
   return {
-    q: f.destination.trim() || undefined,
+    q: dest,
+    city: matchCity ? dest : undefined,
     type: f.types.length === 1 ? f.types[0] : undefined,
     minRating: f.rating === 'all' ? undefined : Number(f.rating),
     minPrice: f.priceMin ? Number(f.priceMin) : undefined,
@@ -59,15 +72,32 @@ export function filtersAreActive(f: FiltersState) {
 
 type Store = {
   filters: FiltersState;
+  exploreSession: ExploreSession;
   setFilters: (filters: FiltersState) => void;
   patchFilters: (partial: Partial<FiltersState>) => void;
   clearFilters: () => void;
+  startExplore: (
+    intent: ExploreIntent,
+    destination?: string,
+    options?: { resetExtras?: boolean },
+  ) => void;
 };
 
 export const useFiltersStore = create<Store>((set) => ({
   filters: defaultFilters,
+  exploreSession: { intent: 'idle', nonce: 0 },
   setFilters: (filters) => set({ filters }),
   patchFilters: (partial) =>
     set((state) => ({ filters: { ...state.filters, ...partial } })),
   clearFilters: () => set({ filters: defaultFilters }),
+  startExplore: (intent, destination, options) =>
+    set((state) => ({
+      filters: options?.resetExtras
+        ? { ...defaultFilters, destination: destination ?? '' }
+        : {
+            ...state.filters,
+            destination: destination ?? state.filters.destination,
+          },
+      exploreSession: { intent, nonce: state.exploreSession.nonce + 1 },
+    })),
 }));

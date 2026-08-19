@@ -21,6 +21,9 @@ describe('Demo seed data for mobile', () => {
     expect(home.body.data.cities.some((c: { city: string }) => c.city === 'Maputo')).toBe(
       true,
     );
+    expect(home.body.data.cities.some((c: { city: string }) => c.city === 'Beira')).toBe(
+      true,
+    );
   });
 
   it('allows guest and host login with fixture credentials', async () => {

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import {
@@ -8,9 +9,10 @@ import {
   WizardProgressHeader,
 } from '@/components/host/HostChrome';
 import { PhotoGrid } from '@/components/host/PhotoGrid';
-import { Input, Screen, SuccessView, Text } from '@/components/ui';
-import { propertyAmenities, roomTypes } from '@/data/host.mock';
-import { useCreateRoom } from '@/hooks/useHost';
+import { PropertySuccessIllustration } from '@/components/icons/PropertySuccessIllustration';
+import { Button, Input, Screen, SelectField, Text } from '@/components/ui';
+import { propertyAmenities } from '@/data/host.mock';
+import { useCreateRoom, useHostProperty } from '@/hooks/useHost';
 import type { BookingModality } from '@/lib/api/types';
 import { uploadImages } from '@/lib/firebase/storage';
 import { pickImages } from '@/lib/images/picker';
@@ -20,38 +22,84 @@ import {
 } from '@/lib/mappers/host';
 import { colors } from '@/theme/colors';
 
-const TOTAL_STEPS = 5;
-const MAX_PHOTOS = 8;
+const TOTAL_STEPS = 6;
+const MAX_PHOTOS = 10;
+const MAIN_AMENITY_COUNT = 8;
 
-const BED_OPTIONS = [
-  'Cama de casal',
-  'Cama de solteiro',
-  'Beliche',
-  'Sofá-cama',
+const ROOM_TYPE_OPTIONS = [
+  { value: 'Individual', label: 'Individual' },
+  { value: 'Casal', label: 'Casal' },
+  { value: 'Twin', label: 'Twin' },
+  { value: 'Triple', label: 'Triple' },
+  { value: 'Suite', label: 'Suite' },
+  { value: 'Quarto Deluxe', label: 'Quarto Deluxe' },
+  { value: 'Familiar', label: 'Familiar' },
+  { value: 'Estúdio', label: 'Estúdio' },
+  { value: 'Dormitório', label: 'Dormitório' },
 ];
+
+const ROOM_STATUS_OPTIONS = [
+  { value: 'disponivel', label: 'Disponível' },
+  { value: 'indisponivel', label: 'Indisponível' },
+  { value: 'manutencao', label: 'Manutenção' },
+];
+
+const MODALITIES: { id: BookingModality; label: string }[] = [
+  { id: 'hora', label: 'Por hora' },
+  { id: 'noite', label: 'Por noite' },
+  { id: 'semana', label: 'Por semana' },
+  { id: 'mes', label: 'Por mês' },
+];
+
+const AMENITY_ICONS: Record<string, ComponentProps<typeof Ionicons>['name']> = {
+  'Wi-Fi gratuito': 'wifi-outline',
+  'Ar condicionado': 'snow-outline',
+  Televisão: 'tv-outline',
+  'Casa de banho privativa': 'water-outline',
+  'Água quente': 'thermometer-outline',
+  'Roupa de cama': 'bed-outline',
+  Toalhas: 'file-tray-outline',
+  'Mesa de trabalho': 'desktop-outline',
+  Estacionamento: 'car-outline',
+  Cozinha: 'restaurant-outline',
+  Minibar: 'wine-outline',
+  Cofre: 'lock-closed-outline',
+  Varanda: 'sunny-outline',
+  'Vista mar': 'boat-outline',
+  'Pequeno-almoço': 'cafe-outline',
+  Frigorífico: 'cube-outline',
+  Roupeiro: 'file-tray-stacked-outline',
+  'Secador de cabelo': 'flash-outline',
+  'Ferro de engomar': 'shirt-outline',
+  'Rede mosquiteira': 'bug-outline',
+};
+
+type Prices = Partial<Record<BookingModality, string>>;
 
 type FormState = {
   name: string;
   type: string;
+  status: string;
   description: string;
   capacity: number;
-  beds: string[];
-  priceNight: string;
-  priceWeek: string;
+  modalities: BookingModality[];
+  prices: Prices;
   amenities: string[];
   photos: string[];
+  confirmed: boolean;
 };
 
 const emptyForm: FormState = {
   name: '',
   type: '',
+  status: 'disponivel',
   description: '',
   capacity: 1,
-  beds: [],
-  priceNight: '',
-  priceWeek: '',
+  modalities: [],
+  prices: {},
   amenities: [],
   photos: [],
+  confirmed: false,
 };
 
 function AmenityRow({
@@ -64,17 +112,17 @@ function AmenityRow({
   onToggle: () => void;
 }) {
   return (
-    <Pressable onPress={onToggle} className="flex-row items-center gap-2 py-1">
+    <Pressable onPress={onToggle} className="flex-row items-center gap-3 py-1.5">
       <View
-        className="h-4 w-4 items-center justify-center rounded"
+        className="h-5 w-5 items-center justify-center rounded"
         style={{
           backgroundColor: checked ? '#FFF7ED' : '#FFFFFF',
           borderWidth: 1,
-          borderColor: checked ? colors.brand.DEFAULT : '#E5E5E5',
+          borderColor: checked ? colors.brand.DEFAULT : '#D4D4D4',
         }}
       >
         {checked ? (
-          <Ionicons name="checkmark" size={12} color={colors.brand.DEFAULT} />
+          <Ionicons name="checkmark" size={14} color={colors.brand.DEFAULT} />
         ) : null}
       </View>
       <Text variant="label-s" className="text-ink-secondary">
@@ -87,15 +135,13 @@ function AmenityRow({
 function Stepper({
   value,
   onChange,
-  hint,
 }: {
   value: number;
   onChange: (n: number) => void;
-  hint?: string;
 }) {
   return (
-    <View className="gap-2">
-      <Text variant="label-xs">Capacidade de hóspedes</Text>
+    <View className="gap-1.5">
+      <Text variant="label-xs">Capacidade maxima</Text>
       <View className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-1">
         <Pressable
           onPress={() => onChange(Math.max(1, value - 1))}
@@ -107,13 +153,13 @@ function Stepper({
           {value}
         </Text>
         <Pressable
-          onPress={() => onChange(value + 1)}
+          onPress={() => onChange(Math.min(50, value + 1))}
           className="h-12 w-12 items-center justify-center rounded-full"
         >
           <Ionicons name="add" size={20} color={colors.ink.secondary} />
         </Pressable>
       </View>
-      {hint ? <Text variant="p-s">{hint}</Text> : null}
+      <Text variant="p-s">Numero de hospedes que este quarto acomoda.</Text>
     </View>
   );
 }
@@ -149,47 +195,71 @@ function MoneyInput({
   );
 }
 
+function formatMzn(value: number) {
+  return `MZN ${Math.round(value).toLocaleString('pt-MZ')}`;
+}
+
+function modalityLabel(id: BookingModality) {
+  return MODALITIES.find((item) => item.id === id)?.label ?? id;
+}
+
 export function AddRoomWizardView() {
-  const { propertyId } = useLocalSearchParams<{ propertyId?: string }>();
+  const { propertyId, amenities: amenitiesParam } = useLocalSearchParams<{
+    propertyId?: string;
+    amenities?: string | string[];
+  }>();
   const resolvedPropertyId = propertyId ? String(propertyId) : '';
   const createRoom = useCreateRoom(resolvedPropertyId);
+  const property = useHostProperty(resolvedPropertyId || undefined);
+  const presetAmenities = useMemo(() => {
+    const raw = Array.isArray(amenitiesParam) ? amenitiesParam[0] : amenitiesParam;
+    return raw ? raw.split('|').filter(Boolean) : [];
+  }, [amenitiesParam]);
 
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [form, setForm] = useState<FormState>({
+    ...emptyForm,
+    amenities: presetAmenities,
+  });
   const busy = uploading || createRoom.isPending;
 
-  const titles = useMemo(
-    () => [
-      'Informações do quarto',
-      'Tipo de cama',
-      'Preço',
-      'Comodidades do quarto',
-      'Fotos do quarto',
-    ],
-    [],
-  );
+  const visibleAmenities = showAllAmenities
+    ? propertyAmenities
+    : propertyAmenities.slice(0, MAIN_AMENITY_COUNT);
 
-  const descriptions = useMemo(
-    () => [
-      'Dê um nome ao quarto e descreva o que o torna especial.',
-      'Seleccione as configurações de cama disponíveis neste quarto.',
-      'Defina quanto custa este quarto e a sua disponibilidade.',
-      'Ainda não acabamos — adicione comodidades.',
-      'Adicione fotos atractivas. A primeira será a capa.',
-    ],
-    [],
-  );
+  const previewPhotos = form.photos.slice(0, 6);
+  const extraPhotos = Math.max(0, form.photos.length - 6);
+  const nightPrice = Number(form.prices.noite) || 0;
+  const previewPrice =
+    nightPrice ||
+    Number(form.prices[form.modalities[0] ?? 'noite']) ||
+    0;
 
   function patch(partial: Partial<FormState>) {
     setForm((prev) => ({ ...prev, ...partial }));
   }
 
-  function toggle(list: string[], label: string) {
-    return list.includes(label)
-      ? list.filter((x) => x !== label)
-      : [...list, label];
+  function toggleModality(id: BookingModality) {
+    setForm((prev) => {
+      const selected = prev.modalities.includes(id)
+        ? prev.modalities.filter((item) => item !== id)
+        : [...prev.modalities, id];
+      const prices = { ...prev.prices };
+      if (!selected.includes(id)) delete prices[id];
+      return { ...prev, modalities: selected, prices };
+    });
+  }
+
+  function toggleAmenity(label: string) {
+    setForm((prev) => ({
+      ...prev,
+      amenities: prev.amenities.includes(label)
+        ? prev.amenities.filter((item) => item !== label)
+        : [...prev.amenities, label],
+    }));
   }
 
   async function addPhotos() {
@@ -218,8 +288,36 @@ export function AddRoomWizardView() {
 
   async function goNext() {
     if (busy) return;
+
+    if (step === 2 && form.modalities.length === 0) {
+      Alert.alert(
+        'Modalidade obrigatória',
+        'Escolha pelo menos uma forma de reserva.',
+      );
+      return;
+    }
+
+    if (step === 3) {
+      const missing = form.modalities.filter((id) => !(Number(form.prices[id]) > 0));
+      if (missing.length) {
+        Alert.alert(
+          'Preço obrigatório',
+          'Informe o preço para cada modalidade seleccionada.',
+        );
+        return;
+      }
+    }
+
     if (step < TOTAL_STEPS) {
       setStep((s) => s + 1);
+      return;
+    }
+
+    if (!form.confirmed) {
+      Alert.alert(
+        'Confirmação necessária',
+        'Confirme que todas as informações fornecidas são verdadeiras.',
+      );
       return;
     }
 
@@ -233,22 +331,9 @@ export function AddRoomWizardView() {
       return;
     }
 
-    const nightPrice = Number(form.priceNight) || 0;
-    const weekPrice = Number(form.priceWeek) || 0;
-    const modalities: BookingModality[] = [];
     const prices: Partial<Record<BookingModality, number>> = {};
-
-    if (nightPrice > 0) {
-      modalities.push('noite');
-      prices.noite = nightPrice;
-    }
-    if (weekPrice > 0) {
-      modalities.push('semana');
-      prices.semana = weekPrice;
-    }
-    if (modalities.length === 0) {
-      modalities.push('noite');
-      prices.noite = 1000;
+    for (const modality of form.modalities) {
+      prices[modality] = Number(form.prices[modality]);
     }
 
     setUploading(true);
@@ -262,11 +347,11 @@ export function AddRoomWizardView() {
             roomTypeApiByLabel[form.type] ??
             roomTypeApiByLabel.Suite ??
             'suite',
+          status: form.status || 'disponivel',
           description:
             form.description.trim() || 'Quarto adicionado via Ogona.',
           maxCapacity: form.capacity,
-          bedLabel: form.beds[0],
-          modalities,
+          modalities: form.modalities,
           prices,
           amenities: form.amenities
             .map((label) => amenityApiByLabel[label])
@@ -294,21 +379,72 @@ export function AddRoomWizardView() {
   }
 
   function resetWizard() {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, amenities: presetAmenities });
+    setShowAllAmenities(false);
     setStep(1);
     setDone(false);
   }
 
   if (done) {
     return (
-      <SuccessView
-        title="Quarto adicionado com sucesso!"
-        description="O quarto foi publicado. Pode ver o alojamento ou voltar ao início."
-        primaryLabel="Ir para o dashboard"
-        onPrimary={() => router.replace('/(host)/(tabs)')}
-        secondaryLabel="Adicionar outro"
-        onSecondary={resetWizard}
-      />
+      <Screen className="bg-surface" contentClassName="flex-1 px-5">
+        <View className="flex-1 items-center justify-center">
+          <PropertySuccessIllustration />
+          <View className="mt-6 items-center px-2">
+            <Text
+              variant="plain"
+              className="text-center font-manrope"
+              style={{
+                color: colors.ink.DEFAULT,
+                fontSize: 18,
+                lineHeight: 24,
+                fontWeight: '600',
+              }}
+            >
+              Quarto adicionado com sucesso!
+            </Text>
+            <Text
+              variant="plain"
+              className="mt-2 text-center"
+              style={{
+                color: colors.ink.muted,
+                fontSize: 14,
+                lineHeight: 20,
+              }}
+            >
+              O seu quarto foi adicionado à propriedade e já está pronto para
+              receber reservas, de acordo com a disponibilidade definida.
+            </Text>
+          </View>
+        </View>
+
+        <View className="gap-3 pb-6">
+          <Button className="h-14 w-full rounded-2xl" onPress={resetWizard}>
+            Adicionar outro quarto
+          </Button>
+          <Pressable
+            onPress={() => router.replace('/(host)/(tabs)')}
+            className="h-14 w-full items-center justify-center"
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.ink.secondary,
+            }}
+          >
+            <Text
+              variant="plain"
+              className="font-inter-semibold"
+              style={{
+                color: colors.ink.secondary,
+                fontSize: 16,
+                lineHeight: 20,
+              }}
+            >
+              Voltar ao Dashboard
+            </Text>
+          </Pressable>
+        </View>
+      </Screen>
     );
   }
 
@@ -326,56 +462,38 @@ export function AddRoomWizardView() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="gap-1.5">
-          <Text variant="h3">{titles[step - 1]}</Text>
-          <Text variant="p-m">{descriptions[step - 1]}</Text>
-        </View>
-
         {step === 1 ? (
           <View className="gap-4">
+            <View className="gap-1.5">
+              <Text variant="h3">Informações do quarto</Text>
+              <Text variant="p-m">Informe os dados básicos deste quarto.</Text>
+            </View>
             <Input
               label="Nome do quarto"
               placeholder="Ex: Quarto Deluxe Vista Mar"
               value={form.name}
               onChangeText={(name) => patch({ name })}
             />
-            <View className="gap-1.5">
-              <Text variant="label-xs">Tipo de quarto</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {roomTypes.map((t) => {
-                  const active = form.type === t;
-                  return (
-                    <Pressable
-                      key={t}
-                      onPress={() => patch({ type: t })}
-                      className={`rounded-full border px-3 py-2 ${
-                        active
-                          ? 'border-brand bg-brand'
-                          : 'border-surface-border bg-surface'
-                      }`}
-                    >
-                      <Text
-                        variant="label-xs"
-                        className={active ? 'text-white' : 'text-ink-secondary'}
-                      >
-                        {t}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-            <Stepper
-              value={form.capacity}
-              onChange={(capacity) => patch({ capacity })}
-              hint="Número máximo de hóspedes neste quarto"
+            <SelectField
+              label="Tipo de quarto"
+              placeholder="Selecione o tipo de quarto"
+              value={form.type}
+              options={ROOM_TYPE_OPTIONS}
+              onChange={(type) => patch({ type })}
+            />
+            <SelectField
+              label="Estado"
+              placeholder="Selecione o estado"
+              value={form.status}
+              options={ROOM_STATUS_OPTIONS}
+              onChange={(status) => patch({ status })}
             />
             <View className="gap-1.5">
               <Text variant="label-xs">Descrição</Text>
               <View className="min-h-[172px] rounded-input border border-surface-border bg-surface p-3">
                 <TextInput
                   multiline
-                  placeholder="Conte mais sobre o quarto...."
+                  placeholder="Descreva o quarto, os seus diferenciais e o que os hóspedes podem esperar."
                   placeholderTextColor={colors.ink.soft}
                   value={form.description}
                   onChangeText={(description) => patch({ description })}
@@ -388,65 +506,110 @@ export function AddRoomWizardView() {
                 </Text>
               </View>
             </View>
+            <Stepper
+              value={form.capacity}
+              onChange={(capacity) => patch({ capacity })}
+            />
           </View>
         ) : null}
 
         {step === 2 ? (
-          <View className="gap-3">
-            {BED_OPTIONS.map((b) => (
-              <AmenityRow
-                key={b}
-                label={b}
-                checked={form.beds.includes(b)}
-                onToggle={() => patch({ beds: toggle(form.beds, b) })}
-              />
-            ))}
-          </View>
-        ) : null}
-
-        {step === 3 ? (
           <View className="gap-4">
-            <MoneyInput
-              label="Preço por noite"
-              value={form.priceNight}
-              onChangeText={(priceNight) => patch({ priceNight })}
-            />
-            <MoneyInput
-              label="Preço por semana"
-              value={form.priceWeek}
-              onChangeText={(priceWeek) => patch({ priceWeek })}
-            />
-          </View>
-        ) : null}
-
-        {step === 4 ? (
-          <View className="gap-4">
-            <View className="gap-0.5">
-              <Text variant="label-s" className="text-ink-secondary">
-                Comodidades disponíveis
-              </Text>
-              <Text variant="label-s" className="text-ink-soft">
-                (Mais usados)
+            <View className="gap-1.5">
+              <Text variant="h3">Como os hóspedes podem reservar este quarto?</Text>
+              <Text variant="p-m">
+                Escolha as modalidades de reserva disponíveis para este quarto.
               </Text>
             </View>
-            <View className="gap-3">
-              {propertyAmenities.map((a) => (
+            <View className="gap-1">
+              {MODALITIES.map((item) => (
                 <AmenityRow
-                  key={a}
-                  label={a}
-                  checked={form.amenities.includes(a)}
-                  onToggle={() =>
-                    patch({ amenities: toggle(form.amenities, a) })
-                  }
+                  key={item.id}
+                  label={item.label}
+                  checked={form.modalities.includes(item.id)}
+                  onToggle={() => toggleModality(item.id)}
                 />
               ))}
             </View>
           </View>
         ) : null}
 
+        {step === 3 ? (
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Text variant="h3">Preço</Text>
+              <Text variant="p-m">
+                Defina o valor para cada modalidade que escolheu.
+              </Text>
+            </View>
+            {form.modalities.length === 0 ? (
+              <Text variant="p-s">
+                Volte atrás e escolha pelo menos uma modalidade de reserva.
+              </Text>
+            ) : (
+              form.modalities.map((id) => (
+                <MoneyInput
+                  key={id}
+                  label={`Preço ${modalityLabel(id).toLowerCase()}`}
+                  value={form.prices[id] ?? ''}
+                  onChangeText={(value) =>
+                    patch({ prices: { ...form.prices, [id]: value } })
+                  }
+                />
+              ))
+            )}
+          </View>
+        ) : null}
+
+        {step === 4 ? (
+          <View className="gap-4">
+            <View className="gap-1.5">
+              <Text variant="h3">Adicione as comodidades do quarto</Text>
+              <Text variant="p-m">
+                Selecione os recursos disponíveis neste quarto para ajudar os
+                hóspedes a escolherem melhor.
+              </Text>
+            </View>
+            <Text variant="label-s" className="text-ink-secondary">
+              Principais comodidades (Mais usados)
+            </Text>
+            <View className="gap-1">
+              {visibleAmenities.map((label) => (
+                <AmenityRow
+                  key={label}
+                  label={label}
+                  checked={form.amenities.includes(label)}
+                  onToggle={() => toggleAmenity(label)}
+                />
+              ))}
+            </View>
+            {propertyAmenities.length > MAIN_AMENITY_COUNT ? (
+              <Pressable
+                onPress={() => setShowAllAmenities((open) => !open)}
+                className="h-12 items-center justify-center rounded-xl border border-ink-secondary"
+              >
+                <Text variant="label-s" className="text-ink-secondary">
+                  {showAllAmenities
+                    ? 'Ver menos comodidades'
+                    : 'Ver mais comodidades'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {step === 5 ? (
           <View className="gap-4">
-            <Text variant="label-xs">Fotos do quarto</Text>
+            <View className="gap-1.5">
+              <Text variant="h3">Fotos do quarto</Text>
+              <Text variant="p-m">
+                Adicione fotografias de boa qualidade para aumentar as hipóteses
+                de reserva.
+              </Text>
+            </View>
+            <Text variant="label-xs">
+              Fotos do quarto ({form.photos.length}/{MAX_PHOTOS})
+            </Text>
             <PhotoGrid
               photos={form.photos}
               max={MAX_PHOTOS}
@@ -455,20 +618,205 @@ export function AddRoomWizardView() {
                 patch({ photos: form.photos.filter((_, i) => i !== index) })
               }
             />
-            <View className="mt-4 gap-3 rounded-xl border border-surface-border bg-[#FCFCFC] p-4">
-              <Text variant="label-s">Resumo</Text>
-              <Text variant="p-s">
-                {form.name || 'Quarto Deluxe Vista Mar'}
-              </Text>
-              <Text variant="p-xs">
-                {form.type || 'Suite'} · {form.capacity} hóspede
-                {form.capacity === 1 ? '' : 's'} ·{' '}
-                {form.priceNight ? `${form.priceNight} MT/noite` : '—'}
-              </Text>
-              <Text variant="p-xs">
-                {form.amenities.length} comodidades · {form.photos.length} fotos
+          </View>
+        ) : null}
+
+        {step === 6 ? (
+          <View className="gap-6">
+            <View className="gap-1.5">
+              <Text variant="h3">Revise o seu quarto</Text>
+              <Text variant="p-m">
+                Confirme todas as informações antes de publicar.
               </Text>
             </View>
+
+            <View className="overflow-hidden rounded-xl border border-[#F5F5F5] bg-surface">
+              <View>
+                {form.photos[0] ? (
+                  <Image
+                    source={{ uri: form.photos[0] }}
+                    style={{ height: 150, width: '100%' }}
+                  />
+                ) : (
+                  <View className="h-[150px] bg-[#E5E5E5]" />
+                )}
+                <View
+                  className="absolute left-3 top-3 rounded-full px-2.5 py-1"
+                  style={{ backgroundColor: '#DBEAFE' }}
+                >
+                  <Text
+                    variant="plain"
+                    style={{ color: '#1D4ED8', fontSize: 11, fontWeight: '600' }}
+                  >
+                    Novo anúncio
+                  </Text>
+                </View>
+              </View>
+              <View className="gap-1 p-4">
+                <Text variant="label-s">
+                  {property.data?.property.name ||
+                    form.name ||
+                    'Pensão Horizonte Azul'}
+                </Text>
+                <Text variant="p-xs">
+                  {property.data?.property.location || 'Polana, Maputo'}
+                </Text>
+                {previewPrice > 0 ? (
+                  <Text variant="label-s">
+                    {formatMzn(previewPrice)}
+                    {form.prices.noite ? ' / noite' : ''}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            <View className="gap-3 rounded-xl border border-surface-border bg-[#FCFCFC] p-4">
+              <View className="flex-row items-center justify-between">
+                <Text variant="label-s">Informações do quarto</Text>
+                <Pressable onPress={() => setStep(1)}>
+                  <Text variant="label-xs" className="text-brand">
+                    Editar
+                  </Text>
+                </Pressable>
+              </View>
+              <Text variant="p-xs">Nome: {form.name || '—'}</Text>
+              <Text variant="p-xs">Tipo: {form.type || '—'}</Text>
+              <Text variant="p-xs">
+                Descrição: {form.description.trim() || '—'}
+              </Text>
+            </View>
+
+            <View className="gap-3 rounded-xl border border-surface-border bg-[#FCFCFC] p-4">
+              <View className="flex-row items-center justify-between">
+                <Text variant="label-s">Preço e disponibilidade</Text>
+                <Pressable onPress={() => setStep(3)}>
+                  <Text variant="label-xs" className="text-brand">
+                    Editar
+                  </Text>
+                </Pressable>
+              </View>
+              <View className="flex-row flex-wrap gap-2">
+                {form.modalities.map((id) => (
+                  <View
+                    key={id}
+                    className="flex-row items-center gap-1 rounded-full px-3 py-1.5"
+                    style={{ backgroundColor: '#F5F3FF' }}
+                  >
+                    <Ionicons name="checkmark" size={12} color="#7C3AED" />
+                    <Text
+                      variant="plain"
+                      style={{ color: '#5B21B6', fontSize: 12 }}
+                    >
+                      {modalityLabel(id)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              {form.modalities.map((id) => (
+                <Text key={id} variant="p-xs">
+                  {modalityLabel(id)}: {formatMzn(Number(form.prices[id]) || 0)}
+                </Text>
+              ))}
+            </View>
+
+            <View className="gap-3 rounded-xl border border-surface-border bg-[#FCFCFC] p-4">
+              <View className="flex-row items-center justify-between">
+                <Text variant="label-s">Comodidades</Text>
+                <Pressable onPress={() => setStep(4)}>
+                  <Text variant="label-xs" className="text-brand">
+                    Editar
+                  </Text>
+                </Pressable>
+              </View>
+              <View className="flex-row flex-wrap">
+                {form.amenities.length ? (
+                  form.amenities.map((label) => (
+                    <View
+                      key={label}
+                      className="mb-3 w-1/2 flex-row items-center gap-2 pr-2"
+                    >
+                      <Ionicons
+                        name={AMENITY_ICONS[label] ?? 'checkmark-outline'}
+                        size={16}
+                        color={colors.ink.secondary}
+                      />
+                      <Text variant="p-xs">{label}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text variant="p-xs">Nenhuma comodidade seleccionada</Text>
+                )}
+              </View>
+            </View>
+
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between">
+                <Text variant="label-s">Fotos</Text>
+                <Pressable onPress={() => setStep(5)}>
+                  <Text variant="label-xs" className="text-brand">
+                    Editar
+                  </Text>
+                </Pressable>
+              </View>
+              <Text variant="p-xs">{form.photos.length} fotos adicionadas</Text>
+              {form.photos.length ? (
+                <View className="flex-row flex-wrap gap-2">
+                  {previewPhotos.map((uri, index) => {
+                    const isLast =
+                      index === previewPhotos.length - 1 && extraPhotos > 0;
+                    return (
+                      <View
+                        key={`${uri}-${index}`}
+                        className="h-[88px] w-[31%] overflow-hidden rounded-xl"
+                      >
+                        <Image
+                          source={{ uri }}
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                        {isLast ? (
+                          <View className="absolute inset-0 items-center justify-center bg-black/55">
+                            <Text
+                              variant="plain"
+                              className="font-inter-semibold"
+                              style={{ color: '#FFFFFF', fontSize: 16 }}
+                            >
+                              +{extraPhotos}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+
+            <Pressable
+              onPress={() => patch({ confirmed: !form.confirmed })}
+              className="flex-row items-start gap-3"
+            >
+              <View
+                className="mt-0.5 h-5 w-5 items-center justify-center rounded"
+                style={{
+                  backgroundColor: form.confirmed ? '#FFF7ED' : '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: form.confirmed
+                    ? colors.brand.DEFAULT
+                    : '#D4D4D4',
+                }}
+              >
+                {form.confirmed ? (
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={colors.brand.DEFAULT}
+                  />
+                ) : null}
+              </View>
+              <Text variant="label-m" className="flex-1 text-ink-secondary">
+                Confirmo que todas as informações fornecidas são verdadeiras.
+              </Text>
+            </Pressable>
           </View>
         ) : null}
       </ScrollView>
@@ -476,7 +824,7 @@ export function AddRoomWizardView() {
       <WizardFooter
         onBack={goBack}
         onContinue={() => void goNext()}
-        disabled={busy}
+        disabled={busy || (step === TOTAL_STEPS && !form.confirmed)}
         continueLabel={
           busy
             ? uploading

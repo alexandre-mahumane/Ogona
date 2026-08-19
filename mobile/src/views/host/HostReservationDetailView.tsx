@@ -86,7 +86,7 @@ export function HostReservationDetailView() {
               <Text variant="p-s">{row.label}</Text>
               <Text
                 variant="label-s"
-                className={row.label === 'Total' ? 'text-brand' : undefined}
+                style={row.label === 'Total' ? { color: '#CA3500' } : undefined}
               >
                 {row.value}
               </Text>
@@ -105,22 +105,30 @@ export function HostReservationDetailView() {
               }
               className="h-12 flex-1 items-center justify-center rounded-[15px] bg-[#F0FDF4]"
             >
-              <Text className="font-inter-semibold text-[13px] text-[#00C950]">
-                Aceitar
-              </Text>
-            </Pressable>
-            <Pressable
-              disabled={rejectReservation.isPending}
-              onPress={() =>
-                rejectReservation.mutate(reservation.id, {
-                  onSuccess: () => router.back(),
-                })
-              }
-              className="h-12 flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
-            >
-              <Text className="font-inter-semibold text-[13px] text-[#FB2C36]">
-                Rejeitar
-              </Text>
+                      <Text
+                        variant="plain"
+                        className="font-inter-semibold"
+                        style={{ color: '#00C950', fontSize: 13, lineHeight: 18 }}
+                      >
+                        Aceitar
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={rejectReservation.isPending}
+                      onPress={() =>
+                        rejectReservation.mutate(reservation.id, {
+                          onSuccess: () => router.back(),
+                        })
+                      }
+                      className="h-12 flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
+                    >
+                      <Text
+                        variant="plain"
+                        className="font-inter-semibold"
+                        style={{ color: '#FB2C36', fontSize: 13, lineHeight: 18 }}
+                      >
+                        Rejeitar
+                      </Text>
             </Pressable>
           </View>
         ) : null}

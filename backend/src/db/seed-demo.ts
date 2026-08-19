@@ -130,124 +130,141 @@ async function createRoomForProperty(
   return room;
 }
 
+async function findPublishedByCity(hostId: string, city: string) {
+  const [row] = await db
+    .select()
+    .from(properties)
+    .where(
+      and(
+        eq(properties.hostId, hostId),
+        eq(properties.city, city),
+        eq(properties.status, 'published'),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 /** Demo dataset used by mobile + `npm run db:seed`. */
 export async function seedDemoData() {
   const host = await upsertUser({ ...HOST, role: 'host' });
   const guest = await upsertUser({ ...GUEST, role: 'guest' });
 
-  const existingPublished = await db
-    .select()
-    .from(properties)
-    .where(and(eq(properties.hostId, host.id), eq(properties.status, 'published')))
-    .limit(1);
+  let maputo = await findPublishedByCity(host.id, 'Maputo');
+  let beira = await findPublishedByCity(host.id, 'Beira');
+  let suiteId: string | undefined;
+  const createdMaputo = !maputo;
+  const createdBeira = !beira;
 
-  if (existingPublished.length > 0) {
-    return {
-      host,
-      guest,
-      reused: true as const,
-      propertyId: existingPublished[0]!.id,
-    };
+  if (!maputo) {
+    const [created] = await db
+      .insert(properties)
+      .values({
+        hostId: host.id,
+        name: 'Pensão Maputo Sundown',
+        type: 'pensao',
+        description:
+          'Ambiente acolhedor no coração de Maputo, ideal para estadias curtas e longas.',
+        contactPhone: normalizePhone('843333333'),
+        whatsapp: normalizePhone('843333333'),
+        coverImageUrl: IMAGE,
+        province: 'maputo_cidade',
+        city: 'Maputo',
+        community: 'polana',
+        neighborhood: 'Polana',
+        address: 'Avenida Julius Nyerere, nº 120',
+        postalCode: '1205',
+        latitude: -25.962,
+        longitude: 32.581,
+        bathrooms: 2,
+        parkingSpots: 1,
+        houseRules: ['Proibido fumar', 'Check-in a partir das 14:00'],
+        status: 'published',
+      })
+      .returning();
+
+    if (!created) throw new Error('Failed to create Maputo property');
+    maputo = created;
+
+    const suite = await createRoomForProperty(maputo.id, 'Suite Deluxe', {
+      hora: 1200,
+      noite: 3200,
+    });
+    suiteId = suite.id;
+    await createRoomForProperty(maputo.id, 'Quarto Standard', { noite: 1800 });
   }
 
-  const [maputo] = await db
-    .insert(properties)
-    .values({
+  if (!beira) {
+    const [created] = await db
+      .insert(properties)
+      .values({
+        hostId: host.id,
+        name: 'Guest House Beira Central',
+        type: 'casa',
+        description:
+          'Guest house confortável no centro da Beira, perto da praia e do comércio local.',
+        contactPhone: normalizePhone('844444444'),
+        whatsapp: normalizePhone('844444444'),
+        coverImageUrl: IMAGE_2,
+        province: 'sofala',
+        city: 'Beira',
+        community: 'beira',
+        neighborhood: 'Ponta Gêa',
+        address: 'Rua Major Matola, 45',
+        postalCode: '2100',
+        latitude: -19.833,
+        longitude: 34.85,
+        bathrooms: 2,
+        parkingSpots: 1,
+        houseRules: ['Silêncio após as 22h'],
+        status: 'published',
+      })
+      .returning();
+
+    if (!created) throw new Error('Failed to create Beira property');
+    beira = created;
+    await createRoomForProperty(beira.id, 'Quarto Standard', {
+      hora: 800,
+      noite: 1500,
+    });
+  }
+
+  if (createdMaputo && suiteId) {
+    const checkIn = addDays(new Date(), 10);
+    const checkOut = addDays(checkIn, 3);
+
+    await db.insert(reservations).values({
+      propertyId: maputo.id,
+      roomId: suiteId,
+      guestId: guest.id,
       hostId: host.id,
-      name: 'Pensão Maputo Sundown',
-      type: 'pensao',
-      description:
-        'Ambiente acolhedor no coração de Maputo, ideal para estadias curtas e longas.',
-      contactPhone: normalizePhone('843333333'),
-      whatsapp: normalizePhone('843333333'),
-      coverImageUrl: IMAGE,
-      province: 'maputo_cidade',
-      city: 'Maputo',
-      community: 'polana',
-      neighborhood: 'Polana',
-      address: 'Avenida Julius Nyerere, nº 120',
-      postalCode: '1205',
-      latitude: -25.962,
-      longitude: 32.581,
-      bathrooms: 2,
-      parkingSpots: 1,
-      houseRules: ['Proibido fumar', 'Check-in a partir das 14:00'],
-      status: 'published',
-    })
-    .returning();
+      modality: 'noite',
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+      units: 3,
+      guestCount: 2,
+      unitPrice: '3200.00',
+      subtotalAmount: '9600.00',
+      feePercent: '3.30',
+      feeAmount: '316.80',
+      totalAmount: '9916.80',
+      currency: 'MZN',
+      status: 'pending',
+    });
 
-  if (!maputo) throw new Error('Failed to create Maputo property');
+    await db.insert(favorites).values({
+      guestId: guest.id,
+      propertyId: maputo.id,
+    });
+  }
 
-  const [beira] = await db
-    .insert(properties)
-    .values({
-      hostId: host.id,
-      name: 'Guest House Beira Central',
-      type: 'hostel',
-      description:
-        'Guest house confortável no centro da Beira, perto da praia e do comércio local.',
-      contactPhone: normalizePhone('844444444'),
-      whatsapp: normalizePhone('844444444'),
-      coverImageUrl: IMAGE_2,
-      province: 'sofala',
-      city: 'Beira',
-      community: 'beira',
-      neighborhood: 'Ponta Gêa',
-      address: 'Rua Major Matola, 45',
-      postalCode: '2100',
-      latitude: -19.833,
-      longitude: 34.85,
-      bathrooms: 2,
-      parkingSpots: 1,
-      houseRules: ['Silêncio após as 22h'],
-      status: 'published',
-    })
-    .returning();
-
-  if (!beira) throw new Error('Failed to create Beira property');
-
-  const suite = await createRoomForProperty(maputo.id, 'Suite Deluxe', {
-    hora: 1200,
-    noite: 3200,
-  });
-  await createRoomForProperty(maputo.id, 'Quarto Standard', { noite: 1800 });
-  await createRoomForProperty(beira.id, 'Quarto Standard', {
-    hora: 800,
-    noite: 1500,
-  });
-
-  const checkIn = addDays(new Date(), 10);
-  const checkOut = addDays(checkIn, 3);
-
-  await db.insert(reservations).values({
-    propertyId: maputo.id,
-    roomId: suite.id,
-    guestId: guest.id,
-    hostId: host.id,
-    modality: 'noite',
-    checkInDate: checkIn,
-    checkOutDate: checkOut,
-    units: 3,
-    guestCount: 2,
-    unitPrice: '3200.00',
-    subtotalAmount: '9600.00',
-    feePercent: '3.30',
-    feeAmount: '316.80',
-    totalAmount: '9916.80',
-    currency: 'MZN',
-    status: 'pending',
-  });
-
-  await db.insert(favorites).values({
-    guestId: guest.id,
-    propertyId: maputo.id,
-  });
+  if (!maputo) throw new Error('Failed to ensure Maputo property');
 
   return {
     host,
     guest,
-    reused: false as const,
+    reused: !createdMaputo && !createdBeira,
     propertyId: maputo.id,
-    suiteId: suite.id,
+    suiteId,
   };
 }

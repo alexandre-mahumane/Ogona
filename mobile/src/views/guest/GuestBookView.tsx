@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import {
@@ -20,7 +20,11 @@ import {
   rangeHasUnavailable,
   toIsoDate,
 } from '@/components/ui/CalendarPicker';
-import { calcBookingTotal, type StayModality } from '@/data/guest.mock';
+import {
+  calcBookingTotal,
+  type GuestRoomRate,
+  type StayModality,
+} from '@/data/guest.mock';
 import { usePropertyDetail } from '@/hooks/useDiscover';
 import {
   useCreateReservation,
@@ -35,6 +39,15 @@ import { formatMt, toApiModality } from '@/lib/mappers/guest';
 import { colors } from '@/theme/colors';
 
 type Step = 'room' | 'dates' | 'confirm';
+
+const CHIP_ORDER: StayModality[] = ['night', 'month', 'hour'];
+const CHIP_SHORT: Record<StayModality, string> = {
+  hour: 'Hora',
+  night: 'Noite',
+  month: 'Mês',
+};
+const INDIGO = '#615FFF';
+const INDIGO_SOFT = '#EEF2FF';
 
 const modalityLabels: Record<StayModality, string> = {
   hour: 'Por Hora',
@@ -56,38 +69,137 @@ function defaultCheckInDate() {
   return toIsoDate(d);
 }
 
+function sortRates(rates: GuestRoomRate[]) {
+  return [...rates].sort(
+    (a, b) => CHIP_ORDER.indexOf(a.modality) - CHIP_ORDER.indexOf(b.modality),
+  );
+}
+
+function limitsHint(rate: GuestRoomRate) {
+  const unit =
+    rate.modality === 'hour'
+      ? 'horas'
+      : rate.modality === 'month'
+        ? 'meses'
+        : 'noites';
+  return `Mín. ${rate.min} · Máx. ${rate.max} ${unit}`;
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      variant="plain"
+      style={{
+        color: colors.ink.secondary,
+        fontSize: 14,
+        lineHeight: 18,
+        fontWeight: '500',
+        textTransform: 'uppercase',
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function Radio({ active }: { active: boolean }) {
+  return (
+    <View
+      className="items-center justify-center"
+      style={{
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: active ? colors.brand.soft : '#FFFFFF',
+        borderWidth: 1,
+        borderColor: active ? colors.brand.DEFAULT : colors.surface.border,
+      }}
+    >
+      {active ? (
+        <View
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: colors.brand.DEFAULT,
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 function Stepper({
   label,
   value,
   onChange,
   min = 1,
+  max = 99,
 }: {
   label: string;
   value: number;
   onChange: (n: number) => void;
   min?: number;
+  max?: number;
 }) {
   return (
     <View className="gap-2">
-      <Text variant="label-xs">{label}</Text>
-      <View className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-1">
+      <Text
+        variant="plain"
+        className="font-inter-semibold"
+        style={{ color: colors.ink.secondary, fontSize: 12, lineHeight: 16 }}
+      >
+        {label}
+      </Text>
+      <View
+        className="h-[54px] flex-row items-center justify-between px-1"
+        style={{
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.surface.border,
+          backgroundColor: '#FFFFFF',
+        }}
+      >
         <Pressable
           onPress={() => onChange(Math.max(min, value - 1))}
           className="h-12 w-12 items-center justify-center rounded-full"
         >
           <Ionicons name="remove" size={20} color={colors.ink.secondary} />
         </Pressable>
-        <Text variant="p-s" className="text-ink">
+        <Text
+          variant="plain"
+          style={{ color: colors.ink.DEFAULT, fontSize: 14, lineHeight: 18 }}
+        >
           {value}
         </Text>
         <Pressable
-          onPress={() => onChange(value + 1)}
+          onPress={() => onChange(Math.min(max, value + 1))}
           className="h-12 w-12 items-center justify-center rounded-full"
         >
           <Ionicons name="add" size={20} color={colors.ink.secondary} />
         </Pressable>
       </View>
     </View>
+  );
+}
+
+function FooterButton({
+  children,
+  disabled,
+  onPress,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Button
+      disabled={disabled}
+      onPress={onPress}
+      className="h-[53px] rounded-[15px]"
+    >
+      {children}
+    </Button>
   );
 }
 
@@ -102,7 +214,7 @@ export function GuestBookView() {
   const [selectedRoomId, setSelectedRoomId] = useState(roomId ? String(roomId) : '');
   const [modality, setModality] = useState<StayModality>('night');
   const [guests, setGuests] = useState(2);
-  const [hours, setHours] = useState(3);
+  const [hours, setHours] = useState(2);
   const [months, setMonths] = useState(1);
   const [checkInDate, setCheckInDate] = useState(defaultCheckInDate);
   const [checkOutDate, setCheckOutDate] = useState(() =>
@@ -203,7 +315,22 @@ export function GuestBookView() {
     }
   }, [rate, modality]);
 
-  const nights = daysBetween(checkInDate, checkOutDate);
+  useEffect(() => {
+    if (!rate) return;
+    if (rate.modality === 'hour') {
+      setHours((h) => Math.min(Math.max(h, rate.min), rate.max));
+    }
+    if (rate.modality === 'month') {
+      setMonths((m) => Math.min(Math.max(m, rate.min), rate.max));
+    }
+  }, [rate?.modality, rate?.min, rate?.max]);
+
+  useEffect(() => {
+    if (!room) return;
+    setGuests((g) => Math.min(Math.max(1, g), room.guests));
+  }, [room]);
+
+  const nights = Math.max(daysBetween(checkInDate, checkOutDate), 1);
   const qty =
     modality === 'hour' ? hours : modality === 'month' ? months : nights;
 
@@ -274,10 +401,22 @@ export function GuestBookView() {
 
   const title =
     step === 'room'
-      ? 'Escolher quarto'
+      ? 'Reservar quarto'
       : step === 'dates'
         ? 'Datas e detalhes'
         : 'Confirmar pedido';
+
+  const goBack = () => {
+    if (step === 'confirm') {
+      setStep('dates');
+      return;
+    }
+    if (step === 'dates') {
+      setStep('room');
+      return;
+    }
+    router.back();
+  };
 
   const confirmBooking = () => {
     if (!quoteInput) return;
@@ -326,78 +465,192 @@ export function GuestBookView() {
   }
 
   return (
-    <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard>
-      <GuestScreenHeader title={title} onBack={() => router.back()} />
+    <Screen className="bg-surface" contentClassName="flex-1" keyboard>
+      <GuestScreenHeader title={title} onBack={goBack} />
 
       <ScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-5 px-6 pb-8 pt-5"
+        contentContainerClassName="gap-6 px-6 pb-8 pt-6"
       >
         {step === 'room' ? (
           <>
-            <View className="gap-3">
-              <Text variant="label-s">Selecione o quarto</Text>
-              {listing.rooms.map((r) => {
-                const active = r.id === selectedRoomId;
-                return (
-                  <Pressable
-                    key={r.id}
-                    onPress={() => setSelectedRoomId(r.id)}
-                    className={`flex-row gap-3 rounded-[15px] border p-3 ${
-                      active
-                        ? 'border-brand bg-brand-soft'
-                        : 'border-[#F5F5F5] bg-surface'
-                    }`}
-                  >
-                    <View
-                      className={`mt-1 h-5 w-5 items-center justify-center rounded-full border ${
-                        active ? 'border-brand bg-brand' : 'border-surface-border'
-                      }`}
-                    >
-                      {active ? (
-                        <Ionicons name="checkmark" size={12} color="#fff" />
-                      ) : null}
-                    </View>
-                    <Image
-                      source={{ uri: r.image }}
-                      style={{ width: 64, height: 64, borderRadius: 12 }}
-                      contentFit="cover"
-                    />
-                    <View className="flex-1 justify-center gap-1">
-                      <Text variant="label-s">{r.name}</Text>
-                      <Text variant="p-xs">{r.detail}</Text>
-                      <Text variant="label-s" className="text-brand">
-                        {r.priceLabel}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View className="gap-2">
-              <Text variant="label-s">Modalidade</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {availableModalities.map((r) => {
-                  const active = modality === r.modality;
+            <View className="gap-4">
+              <SectionLabel>Quarto</SectionLabel>
+              <View style={{ gap: 11 }}>
+                {listing.rooms.map((r) => {
+                  const active = r.id === selectedRoomId;
+                  const from = r.rates.reduce(
+                    (min, item) => (item.price < min ? item.price : min),
+                    r.rates[0]?.price ?? 0,
+                  );
                   return (
                     <Pressable
-                      key={r.modality}
-                      onPress={() => setModality(r.modality)}
-                      className={`h-10 items-center justify-center rounded-full border px-4 ${
-                        active
-                          ? 'border-brand bg-brand'
-                          : 'border-surface-border bg-surface'
-                      }`}
+                      key={r.id}
+                      onPress={() => setSelectedRoomId(r.id)}
+                      className="flex-row items-start"
+                      style={{
+                        padding: 15,
+                        gap: 11,
+                        borderRadius: 15,
+                        backgroundColor: active ? colors.brand.soft : '#FFFFFF',
+                        borderWidth: 1,
+                        borderColor: active
+                          ? colors.brand.DEFAULT
+                          : colors.surface.border,
+                      }}
                     >
-                      <Text
-                        variant="label-xs"
-                        className={active ? 'text-white' : 'text-ink-secondary'}
-                      >
-                        {modalityLabels[r.modality]}
-                      </Text>
+                      <Radio active={active} />
+                      <View className="flex-1">
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.ink.DEFAULT,
+                            fontSize: 14,
+                            lineHeight: 18,
+                          }}
+                        >
+                          {r.name}
+                        </Text>
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.ink.soft,
+                            fontSize: 12,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {r.detail}
+                        </Text>
+                        <View className="flex-row flex-wrap" style={{ gap: 8, paddingVertical: 12 }}>
+                          {sortRates(r.rates).map((item) => (
+                            <View
+                              key={item.modality}
+                              style={{
+                                backgroundColor: INDIGO_SOFT,
+                                borderRadius: 999,
+                                paddingHorizontal: 8,
+                                paddingVertical: 2,
+                              }}
+                            >
+                              <Text
+                                variant="plain"
+                                className="font-inter-semibold"
+                                style={{
+                                  color: INDIGO,
+                                  fontSize: 10,
+                                  lineHeight: 15,
+                                }}
+                              >
+                                {CHIP_SHORT[item.modality]} · {formatMt(item.price)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                        <View className="flex-row items-center" style={{ gap: 4 }}>
+                          <Text
+                            variant="plain"
+                            style={{
+                              color: colors.ink.soft,
+                              fontSize: 12,
+                              lineHeight: 16,
+                            }}
+                          >
+                            A partir de
+                          </Text>
+                          <Text
+                            variant="plain"
+                            className="font-inter-semibold"
+                            style={{
+                              color: colors.brand.DEFAULT,
+                              fontSize: 14,
+                              lineHeight: 18,
+                            }}
+                          >
+                            {formatMt(from)}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View className="gap-4">
+              <SectionLabel>Como pretende reservar?</SectionLabel>
+              <View className="gap-2">
+                {sortRates(availableModalities).map((item) => {
+                  const active = modality === item.modality;
+                  return (
+                    <Pressable
+                      key={item.modality}
+                      onPress={() => setModality(item.modality)}
+                      className="flex-row items-center self-stretch"
+                      style={{
+                        padding: 15,
+                        gap: 16,
+                        minHeight: 66,
+                        borderRadius: 15,
+                        backgroundColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderColor: colors.surface.border,
+                      }}
+                    >
+                      <Radio active={active} />
+                      <View className="flex-1">
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.ink.DEFAULT,
+                            fontSize: 14,
+                            lineHeight: 18,
+                          }}
+                        >
+                          {item.label}
+                        </Text>
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.ink.soft,
+                            fontSize: 12,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {limitsHint(item)}
+                        </Text>
+                      </View>
+                      <View className="items-end">
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.brand.DEFAULT,
+                            fontSize: 14,
+                            lineHeight: 18,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {formatMt(item.price)}
+                        </Text>
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{
+                            color: colors.ink.soft,
+                            fontSize: 10,
+                            lineHeight: 15,
+                            textAlign: 'right',
+                          }}
+                        >
+                          {item.unit}
+                        </Text>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -424,6 +677,8 @@ export function GuestBookView() {
                   label="Hóspedes"
                   value={guests}
                   onChange={setGuests}
+                  min={1}
+                  max={room?.guests ?? 10}
                 />
               </View>
             ) : null}
@@ -441,7 +696,13 @@ export function GuestBookView() {
                   icon="time-outline"
                   onPress={() => setTimeOpen(true)}
                 />
-                <Stepper label="Horas" value={hours} onChange={setHours} />
+                <Stepper
+                  label="Horas"
+                  value={hours}
+                  onChange={setHours}
+                  min={rate?.min ?? 2}
+                  max={rate?.max ?? 12}
+                />
               </View>
             ) : null}
 
@@ -452,13 +713,26 @@ export function GuestBookView() {
                   value={formatDisplayDate(checkInDate)}
                   onPress={() => setCalendarOpen(true)}
                 />
-                <Stepper label="Meses" value={months} onChange={setMonths} />
+                <Stepper
+                  label="Meses"
+                  value={months}
+                  onChange={setMonths}
+                  min={rate?.min ?? 1}
+                  max={rate?.max ?? 12}
+                />
+                <Stepper
+                  label="Hóspedes"
+                  value={guests}
+                  onChange={setGuests}
+                  min={1}
+                  max={room?.guests ?? 10}
+                />
               </View>
             ) : null}
 
             {quoteMutation.isError &&
             !isReservationDateConflict(quoteMutation.error) ? (
-              <Text variant="p-s" className="text-[#FB2C36]">
+              <Text variant="plain" style={{ color: '#FB2C36', fontSize: 14 }}>
                 {quoteMutation.error instanceof Error
                   ? quoteMutation.error.message
                   : 'Não foi possível calcular o preço'}
@@ -471,13 +745,28 @@ export function GuestBookView() {
               qtyLabel={qtyLabel}
               fee={formatMt(totals.fee)}
               total={formatMt(totals.total)}
+              unitLabel={
+                modality === 'hour'
+                  ? 'Preço por hora'
+                  : modality === 'month'
+                    ? 'Preço por mês'
+                    : 'Preço por noite'
+              }
             />
           </>
         ) : null}
 
         {step === 'confirm' ? (
           <>
-            <View className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface">
+            <View
+              className="overflow-hidden"
+              style={{
+                borderRadius: 15,
+                borderWidth: 1,
+                borderColor: '#F5F5F5',
+                backgroundColor: '#FFFFFF',
+              }}
+            >
               <View className="flex-row gap-3 p-3">
                 <Image
                   source={{ uri: listing.image }}
@@ -485,14 +774,50 @@ export function GuestBookView() {
                   contentFit="cover"
                 />
                 <View className="flex-1 justify-center gap-1">
-                  <Text variant="label-s">{listing.name}</Text>
-                  <Text variant="p-xs">{listing.location}</Text>
-                  <Text variant="p-xs">{room?.name}</Text>
+                  <Text
+                    variant="plain"
+                    className="font-inter-semibold"
+                    style={{
+                      color: colors.ink.DEFAULT,
+                      fontSize: 14,
+                      lineHeight: 18,
+                    }}
+                  >
+                    {listing.name}
+                  </Text>
+                  <Text
+                    variant="plain"
+                    style={{
+                      color: colors.ink.soft,
+                      fontSize: 12,
+                      lineHeight: 16,
+                    }}
+                  >
+                    {listing.location}
+                  </Text>
+                  <Text
+                    variant="plain"
+                    style={{
+                      color: colors.ink.soft,
+                      fontSize: 12,
+                      lineHeight: 16,
+                    }}
+                  >
+                    {room?.name}
+                  </Text>
                 </View>
               </View>
             </View>
 
-            <View className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface">
+            <View
+              className="overflow-hidden"
+              style={{
+                borderRadius: 15,
+                borderWidth: 1,
+                borderColor: '#F5F5F5',
+                backgroundColor: '#FFFFFF',
+              }}
+            >
               {[
                 { label: 'Modalidade', value: modalityLabels[modality] },
                 {
@@ -509,16 +834,36 @@ export function GuestBookView() {
               ].map((row) => (
                 <View
                   key={row.label}
-                  className="flex-row items-center justify-between border-b border-[#F5F5F5] px-4 py-3"
+                  className="flex-row items-center justify-between px-4 py-3"
+                  style={{ borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }}
                 >
-                  <Text variant="p-s">{row.label}</Text>
-                  <Text variant="label-s">{row.value}</Text>
+                  <Text
+                    variant="plain"
+                    style={{
+                      color: colors.ink.muted,
+                      fontSize: 14,
+                      lineHeight: 18,
+                    }}
+                  >
+                    {row.label}
+                  </Text>
+                  <Text
+                    variant="plain"
+                    className="font-inter-semibold"
+                    style={{
+                      color: colors.ink.DEFAULT,
+                      fontSize: 14,
+                      lineHeight: 18,
+                    }}
+                  >
+                    {row.value}
+                  </Text>
                 </View>
               ))}
             </View>
 
             {formError ? (
-              <Text variant="p-s" className="text-[#FB2C36]">
+              <Text variant="plain" style={{ color: '#FB2C36', fontSize: 14 }}>
                 {formError}
               </Text>
             ) : null}
@@ -529,6 +874,13 @@ export function GuestBookView() {
               qtyLabel={qtyLabel}
               fee={formatMt(totals.fee)}
               total={formatMt(totals.total)}
+              unitLabel={
+                modality === 'hour'
+                  ? 'Preço por hora'
+                  : modality === 'month'
+                    ? 'Preço por mês'
+                    : 'Preço por noite'
+              }
             />
           </>
         ) : null}
@@ -536,22 +888,20 @@ export function GuestBookView() {
 
       <StickyFooter>
         {step === 'room' ? (
-          <Button onPress={() => setStep('dates')}>Continuar</Button>
+          <FooterButton onPress={() => setStep('dates')}>Continuar</FooterButton>
         ) : null}
         {step === 'dates' ? (
-          <Button disabled={datesBlocked} onPress={() => setStep('confirm')}>
-            Confirmar
-          </Button>
+          <FooterButton disabled={datesBlocked} onPress={() => setStep('confirm')}>
+            Continuar
+          </FooterButton>
         ) : null}
         {step === 'confirm' ? (
-          <Button
+          <FooterButton
             disabled={createReservation.isPending}
             onPress={confirmBooking}
           >
-            {createReservation.isPending
-              ? 'A enviar…'
-              : 'Confirmar pedido'}
-          </Button>
+            {createReservation.isPending ? 'A enviar…' : 'Confirmar pedido'}
+          </FooterButton>
         ) : null}
       </StickyFooter>
 

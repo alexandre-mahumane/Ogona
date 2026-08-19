@@ -55,6 +55,12 @@ export class DiscoverRepository {
   async search(query: DiscoverPropertiesQuery, guestId?: string) {
     const conditions = [eq(properties.status, 'published')];
 
+    if (query.city) {
+      conditions.push(
+        sql`lower(btrim(${properties.city})) = lower(btrim(${query.city}))`,
+      );
+    }
+
     if (query.q) {
       const q = `%${query.q}%`;
       conditions.push(

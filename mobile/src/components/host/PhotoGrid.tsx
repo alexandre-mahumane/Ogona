@@ -5,7 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui';
 import { colors } from '@/theme/colors';
 
-const SLOTS = 9;
+const SLOTS_FALLBACK = 9;
 
 type Props = {
   photos: string[];
@@ -15,7 +15,8 @@ type Props = {
 };
 
 export function PhotoGrid({ photos, max = 8, onAdd, onRemove }: Props) {
-  const slots = Array.from({ length: SLOTS }, (_, i) => i);
+  const slotCount = Math.min(max + 1, Math.max(SLOTS_FALLBACK, photos.length + 1));
+  const slots = Array.from({ length: slotCount }, (_, i) => i);
   const canAdd = photos.length < max;
 
   return (

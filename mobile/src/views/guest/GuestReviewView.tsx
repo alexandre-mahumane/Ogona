@@ -68,7 +68,7 @@ export function GuestReviewView() {
   }
 
   return (
-    <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard>
+    <Screen className="bg-surface" contentClassName="flex-1" keyboard>
       <GuestScreenHeader
         title="Avaliar estadia"
         onBack={() => router.back()}
@@ -76,12 +76,34 @@ export function GuestReviewView() {
 
       <View className="flex-1 gap-6 px-6 pt-6">
         <View className="gap-1">
-          <Text variant="h5">{reservation.property}</Text>
-          <Text variant="p-s">{reservation.room}</Text>
+          <Text
+            variant="plain"
+            className="font-manrope"
+            style={{
+              color: colors.ink.DEFAULT,
+              fontSize: 18,
+              lineHeight: 24,
+              fontWeight: '600',
+            }}
+          >
+            {reservation.property}
+          </Text>
+          <Text
+            variant="plain"
+            style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+          >
+            {reservation.room}
+          </Text>
         </View>
 
         <View className="items-center gap-3">
-          <Text variant="label-s">Como foi a sua experiência?</Text>
+          <Text
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: colors.ink.secondary, fontSize: 14, lineHeight: 18 }}
+          >
+            Como foi a sua experiência?
+          </Text>
           <View className="flex-row gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <Pressable key={star} onPress={() => setRating(star)} hitSlop={6}>
@@ -98,8 +120,22 @@ export function GuestReviewView() {
         </View>
 
         <View className="gap-1.5">
-          <Text variant="label-xs">Comentário</Text>
-          <View className="min-h-[140px] rounded-input border border-surface-border bg-surface px-4 py-3">
+          <Text
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: colors.ink.secondary, fontSize: 12, lineHeight: 16 }}
+          >
+            Comentário
+          </Text>
+          <View
+            className="min-h-[140px] px-4 py-3"
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.surface.border,
+              backgroundColor: '#FFFFFF',
+            }}
+          >
             <TextInput
               value={comment}
               onChangeText={(v) => setComment(v.slice(0, 500))}
@@ -107,10 +143,19 @@ export function GuestReviewView() {
               placeholderTextColor={colors.ink.soft}
               multiline
               textAlignVertical="top"
-              className="min-h-[110px] font-inter text-p-s text-ink"
+              className="min-h-[110px] font-inter text-p-s"
+              style={{ color: colors.ink.DEFAULT }}
             />
           </View>
-          <Text variant="p-xs" className="text-right">
+          <Text
+            variant="plain"
+            style={{
+              color: colors.ink.soft,
+              fontSize: 12,
+              lineHeight: 16,
+              textAlign: 'right',
+            }}
+          >
             {comment.length}/500
           </Text>
         </View>
@@ -119,6 +164,7 @@ export function GuestReviewView() {
       <StickyFooter>
         <Button
           disabled={rating === 0 || createReview.isPending}
+          className="h-[53px] rounded-[15px]"
           onPress={() => {
             if (!reservationId) return;
             createReview.mutate(

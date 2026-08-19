@@ -9,12 +9,12 @@ export { FilterChips, HostScreenHeader as GuestScreenHeader } from '@/components
 
 type BadgeTone = 'green' | 'blue' | 'orange' | 'yellow' | 'gray';
 
-const badgeStyles: Record<BadgeTone, { bg: string; text: string }> = {
-  green: { bg: 'bg-[#F0FDF4]', text: 'text-[#00C950]' },
-  blue: { bg: 'bg-[#EFF6FF]', text: 'text-[#2B7FFF]' },
-  orange: { bg: 'bg-[#FFF7ED]', text: 'text-brand' },
-  yellow: { bg: 'bg-[#FEFCE8]', text: 'text-[#F0B100]' },
-  gray: { bg: 'bg-[#F5F5F5]', text: 'text-ink-secondary' },
+const badgeColors: Record<BadgeTone, { bg: string; text: string }> = {
+  green: { bg: '#F0FDF4', text: '#00C950' },
+  blue: { bg: '#EFF6FF', text: '#2B7FFF' },
+  orange: { bg: '#FFF7ED', text: colors.brand.DEFAULT },
+  yellow: { bg: '#FEFCE8', text: '#F0B100' },
+  gray: { bg: '#F5F5F5', text: colors.ink.secondary },
 };
 
 export function StatusBadge({
@@ -26,16 +26,23 @@ export function StatusBadge({
   tone?: BadgeTone;
   withDot?: boolean;
 }) {
-  const s = badgeStyles[tone];
+  const s = badgeColors[tone];
   return (
-    <View className={`flex-row items-center gap-1.5 rounded-full px-2.5 py-1 ${s.bg}`}>
+    <View
+      className="flex-row items-center gap-1.5 rounded-full px-2 py-0.5"
+      style={{ backgroundColor: s.bg }}
+    >
       {withDot ? (
         <View
           className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: tone === 'green' ? '#00C950' : colors.brand.DEFAULT }}
+          style={{ backgroundColor: s.text }}
         />
       ) : null}
-      <Text className={`font-inter-semibold text-[10px] leading-4 ${s.text}`}>
+      <Text
+        variant="plain"
+        className="font-inter-semibold"
+        style={{ color: s.text, fontSize: 10, lineHeight: 16 }}
+      >
         {label}
       </Text>
     </View>
@@ -56,7 +63,11 @@ export function SectionHeader({
       <Text className="font-manrope text-h5 text-ink">{title}</Text>
       {onAction ? (
         <Pressable onPress={onAction}>
-          <Text className="font-inter-semibold text-[12px] text-brand">
+          <Text
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: colors.brand.DEFAULT, fontSize: 12, lineHeight: 16 }}
+          >
             {actionLabel}
           </Text>
         </Pressable>
@@ -79,38 +90,86 @@ export function PriceBreakdown({
   qtyLabel,
   fee,
   total,
+  unitLabel = 'Preço por noite',
 }: {
   nightPrice: string;
   qty: string;
   qtyLabel: string;
   fee: string;
   total: string;
+  unitLabel?: string;
 }) {
   const rows = [
-    { label: 'Preço por noite', value: nightPrice },
+    { label: unitLabel, value: nightPrice },
     { label: 'Quantidade', value: qtyLabel },
-    { label: 'Subtotal', value: qty, hint: true },
+    { label: 'Subtotal', value: qty },
     { label: 'Taxa Ogona (3.3%)', value: fee },
   ];
   return (
-    <View className="overflow-hidden rounded-[15px] border border-surface-border">
-      <View className="border-b border-surface-border bg-surface-muted px-4 py-2">
-        <Text className="font-inter-semibold text-[10px] uppercase tracking-wider text-ink-secondary">
+    <View
+      className="overflow-hidden rounded-[15px]"
+      style={{ borderWidth: 1, borderColor: colors.surface.border }}
+    >
+      <View
+        className="border-b px-4 py-2"
+        style={{
+          borderBottomColor: colors.surface.border,
+          backgroundColor: colors.surface.muted,
+        }}
+      >
+        <Text
+          variant="plain"
+          className="font-inter-semibold"
+          style={{
+            color: colors.ink.secondary,
+            fontSize: 10,
+            lineHeight: 15,
+            letterSpacing: 0.8,
+            textTransform: 'uppercase',
+          }}
+        >
           Cálculo do preço
         </Text>
       </View>
       {rows.map((row) => (
         <View
           key={row.label}
-          className="flex-row items-center justify-between border-b border-surface-border px-4 py-2.5"
+          className="flex-row items-center justify-between border-b px-4 py-2.5"
+          style={{ borderBottomColor: colors.surface.border }}
         >
-          <Text className="font-inter text-[13px] text-ink-muted">{row.label}</Text>
-          <Text className="font-inter-semibold text-[13px] text-ink">{row.value}</Text>
+          <Text
+            variant="plain"
+            style={{ color: colors.ink.muted, fontSize: 13, lineHeight: 18 }}
+          >
+            {row.label}
+          </Text>
+          <Text
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: colors.ink.DEFAULT, fontSize: 13, lineHeight: 18 }}
+          >
+            {row.value}
+          </Text>
         </View>
       ))}
-      <View className="flex-row items-center justify-between bg-brand-soft px-4 py-3.5">
-        <Text className="font-inter-semibold text-[13px] text-ink">Total</Text>
-        <Text className="font-manrope-bold text-[17px] text-brand">{total}</Text>
+      <View
+        className="flex-row items-center justify-between px-4 py-3.5"
+        style={{ backgroundColor: colors.brand.soft }}
+      >
+        <Text
+          variant="plain"
+          className="font-inter-semibold"
+          style={{ color: colors.ink.DEFAULT, fontSize: 13, lineHeight: 18 }}
+        >
+          Total
+        </Text>
+        <Text
+          variant="plain"
+          className="font-manrope-bold"
+          style={{ color: colors.brand.DEFAULT, fontSize: 17, lineHeight: 22 }}
+        >
+          {total}
+        </Text>
       </View>
     </View>
   );

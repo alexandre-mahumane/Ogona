@@ -31,17 +31,28 @@ export function DateField({
 }: DateFieldProps) {
   return (
     <View className="w-full gap-1.5">
-      <Text variant="label-xs">{label}</Text>
+      <Text
+        variant="plain"
+        className="font-inter-semibold"
+        style={{ color: colors.ink.secondary, fontSize: 12, lineHeight: 16 }}
+      >
+        {label}
+      </Text>
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
-        className={`h-[54px] flex-row items-center justify-between rounded-input border bg-surface px-4 ${
-          error ? 'border-danger' : 'border-surface-border'
-        }`}
+        className="h-[54px] flex-row items-center justify-between rounded-input border bg-surface px-4"
+        style={{
+          borderColor: error ? colors.danger : colors.surface.border,
+        }}
       >
         <Text
-          variant="p-s"
-          className={value ? 'text-ink' : 'text-ink-soft'}
+          variant="plain"
+          style={{
+            color: value ? colors.ink.DEFAULT : colors.ink.soft,
+            fontSize: 14,
+            lineHeight: 18,
+          }}
         >
           {value || placeholder}
         </Text>

@@ -1,33 +1,125 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, View } from 'react-native';
 
 import {
   GuestScreenHeader,
-  StatusBadge,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
 import { Button, Screen, Text } from '@/components/ui';
+import type { GuestReservationStatus } from '@/data/guest.mock';
 import {
   useCancelReservation,
   useGuestReservation,
 } from '@/hooks/useReservations';
 import { colors } from '@/theme/colors';
 
-const bannerBg = {
-  yellow: { bg: '#FEFCE8', border: '#F0B100', text: '#A16207' },
-  blue: { bg: '#EFF6FF', border: '#2B7FFF', text: '#1D4ED8' },
-  gray: { bg: '#F5F5F5', border: '#A1A1A1', text: '#525252' },
-} as const;
+const bannerByStatus: Record<
+  GuestReservationStatus,
+  {
+    bg: string;
+    border: string;
+    iconBg: string;
+    title: string;
+    body: string;
+  } | null
+> = {
+  pending: {
+    bg: '#FEFCE8',
+    border: '#F0B100',
+    iconBg: '#F0B100',
+    title: '#A65F00',
+    body: '#D08700',
+  },
+  awaiting_payment: {
+    bg: 'rgba(238, 242, 255, 0.5)',
+    border: '#615FFF',
+    iconBg: '#615FFF',
+    title: '#432DD7',
+    body: '#615FFF',
+  },
+  confirmed: {
+    bg: '#F0FDF4',
+    border: '#7BF1A8',
+    iconBg: '#00C950',
+    title: '#008236',
+    body: '#00A63E',
+  },
+  completed: null,
+  cancelled: {
+    bg: '#F5F5F5',
+    border: '#E5E5E5',
+    iconBg: '#737373',
+    title: '#525252',
+    body: '#737373',
+  },
+};
 
-const statusTone = {
-  pending: 'yellow',
-  awaiting_payment: 'blue',
-  confirmed: 'green',
-  completed: 'gray',
-  cancelled: 'gray',
-} as const;
+const statusBadge: Record<
+  GuestReservationStatus,
+  { bg: string; text: string; size: number; weight: '600' | '700' }
+> = {
+  pending: { bg: '#FEFCE8', text: '#F0B100', size: 12, weight: '600' },
+  awaiting_payment: { bg: '#EFF6FF', text: '#2B7FFF', size: 11.25, weight: '700' },
+  confirmed: { bg: '#F0FDF4', text: '#00C950', size: 12, weight: '600' },
+  completed: { bg: '#F5F5F5', text: '#525252', size: 12, weight: '600' },
+  cancelled: { bg: '#F5F5F5', text: '#525252', size: 12, weight: '600' },
+};
+
+function openWhatsApp(phone?: string | null) {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  const url = digits
+    ? `https://wa.me/${digits.startsWith('258') ? digits : `258${digits}`}`
+    : 'https://wa.me/258';
+  void Linking.openURL(url);
+}
+
+function ActionLink({
+  children,
+  onPress,
+  disabled,
+  tone,
+}: {
+  children: string;
+  onPress: () => void;
+  disabled?: boolean;
+  tone: 'whatsapp' | 'cancel';
+}) {
+  const green = tone === 'whatsapp';
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      className="flex-1 flex-row items-center justify-center"
+      style={{
+        height: 41,
+        borderRadius: green ? 12 : 15,
+        backgroundColor: green ? '#DCFCE7' : '#FFFFFF',
+        borderWidth: 1,
+        borderColor: green ? '#7BF1A8' : '#FB2C36',
+        gap: 8,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <Ionicons
+        name={green ? 'logo-whatsapp' : 'close-circle-outline'}
+        size={green ? 20 : 15}
+        color={green ? '#00C950' : '#FB2C36'}
+      />
+      <Text
+        variant="plain"
+        className="font-inter-semibold"
+        style={{
+          color: green ? '#00C950' : '#FB2C36',
+          fontSize: 13,
+          lineHeight: 19,
+        }}
+      >
+        {children}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function GuestReservationDetailView() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,87 +144,172 @@ export function GuestReservationDetailView() {
     );
   }
 
-  const banner = bannerBg[reservation.bannerTone];
+  const banner = bannerByStatus[reservation.status];
+  const badge = statusBadge[reservation.status];
+  const rows = [
+    { label: 'Propriedade', value: reservation.property },
+    { label: 'Quarto', value: reservation.room },
+    { label: 'Check-in', value: reservation.checkIn },
+    { label: 'Check-out', value: reservation.checkOut },
+    { label: 'Noites', value: String(reservation.nights) },
+    { label: 'Total', value: reservation.amount, accent: true },
+  ];
 
   return (
     <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard={false}>
       <GuestScreenHeader
-        title="Detalhe da reserva"
+        title="Detalhes da reserva"
         onBack={() => router.back()}
       />
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-5 px-6 pb-8 pt-5"
+        contentContainerClassName="px-[19px] pb-8 pt-6"
+        contentContainerStyle={{ gap: 16, alignItems: 'center' }}
       >
+        {banner ? (
+          <View
+            className="w-full"
+            style={{
+              padding: 16,
+              gap: 12,
+              borderRadius: 12,
+              backgroundColor: banner.bg,
+              borderWidth: 1,
+              borderColor: banner.border,
+            }}
+          >
+            <View className="flex-row items-start" style={{ gap: 12 }}>
+              <View
+                className="items-center justify-center"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  backgroundColor: banner.iconBg,
+                }}
+              >
+                <Ionicons name="time-outline" size={17} color="#FFFFFF" />
+              </View>
+              <View className="flex-1" style={{ gap: 4 }}>
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{ color: banner.title, fontSize: 14, lineHeight: 18 }}
+                >
+                  {reservation.bannerTitle}
+                </Text>
+                <Text
+                  variant="plain"
+                  style={{ color: banner.body, fontSize: 12, lineHeight: 16 }}
+                >
+                  {reservation.bannerBody}
+                </Text>
+              </View>
+            </View>
+            {reservation.expiryHint ? (
+              <View
+                className="flex-row items-center self-start"
+                style={{
+                  paddingHorizontal: 11,
+                  paddingVertical: 6,
+                  borderRadius: 11,
+                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="time-outline" size={11} color="#615FFF" />
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{ color: '#615FFF', fontSize: 11, lineHeight: 15, fontWeight: '700' }}
+                >
+                  {reservation.expiryHint}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         <View
-          className="gap-1 rounded-[15px] border px-4 py-3"
+          className="w-full flex-row items-center justify-between"
           style={{
-            backgroundColor: banner.bg,
-            borderColor: banner.border,
+            paddingHorizontal: 15,
+            paddingVertical: 11,
+            borderRadius: 15,
+            backgroundColor: '#FFFFFF',
+            borderWidth: 1,
+            borderColor: '#F5F5F5',
           }}
         >
           <Text
-            variant="label-s"
-            style={{ color: banner.text }}
-            className="font-inter-bold"
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: colors.ink.DEFAULT, fontSize: 14, lineHeight: 18 }}
           >
-            {reservation.bannerTitle}
+            Estado
           </Text>
-          <Text variant="p-s" style={{ color: banner.text }}>
-            {reservation.bannerBody}
-          </Text>
-          {reservation.expiryHint ? (
+          <View
+            style={{
+              backgroundColor: badge.bg,
+              borderRadius: 999,
+              paddingHorizontal: 11,
+              paddingVertical: 4,
+            }}
+          >
             <Text
-              variant="label-xs"
-              style={{ color: banner.text }}
-              className="mt-1"
+              variant="plain"
+              className="font-inter-semibold"
+              style={{
+                color: badge.text,
+                fontSize: badge.size,
+                lineHeight: 16,
+                fontWeight: badge.weight,
+              }}
             >
-              {reservation.expiryHint}
+              {reservation.statusLabel}
             </Text>
-          ) : null}
-        </View>
-
-        <View className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface">
-          <View className="flex-row gap-3 p-3">
-            <Image
-              source={{ uri: reservation.image }}
-              style={{ width: 80, height: 80, borderRadius: 12 }}
-              contentFit="cover"
-            />
-            <View className="flex-1 justify-center gap-1">
-              <Text variant="label-s">{reservation.property}</Text>
-              <Text variant="p-xs">{reservation.room}</Text>
-              <Text variant="p-xs">{reservation.location}</Text>
-            </View>
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between rounded-[15px] border border-[#F5F5F5] bg-surface px-4 py-3">
-          <Text variant="p-s">Estado</Text>
-          <StatusBadge
-            label={reservation.statusLabel}
-            tone={statusTone[reservation.status]}
-          />
-        </View>
-
-        <View className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface">
-          {[
-            { label: 'Check-in', value: reservation.checkIn },
-            { label: 'Check-out', value: reservation.checkOut },
-            { label: 'Noites', value: String(reservation.nights) },
-            { label: 'Hóspedes', value: String(reservation.guests) },
-            { label: 'Total', value: reservation.amount },
-          ].map((row) => (
+        <View
+          className="w-full overflow-hidden"
+          style={{
+            borderRadius: 15,
+            backgroundColor: '#FFFFFF',
+            borderWidth: 1,
+            borderColor: '#F5F5F5',
+          }}
+        >
+          {rows.map((row, i) => (
             <View
               key={row.label}
-              className="flex-row items-center justify-between border-b border-[#F5F5F5] px-4 py-3"
+              className="flex-row items-start justify-between"
+              style={{
+                paddingHorizontal: 15,
+                paddingVertical: 11,
+                borderBottomWidth: i === rows.length - 1 ? 0 : 1,
+                borderBottomColor: '#F5F5F5',
+              }}
             >
-              <Text variant="p-s">{row.label}</Text>
               <Text
-                variant="label-s"
-                className={row.label === 'Total' ? 'text-brand' : undefined}
+                variant="plain"
+                style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+              >
+                {row.label}
+              </Text>
+              <Text
+                variant="plain"
+                className="font-inter-semibold"
+                style={{
+                  color: row.accent ? colors.brand.DEFAULT : colors.ink.DEFAULT,
+                  fontSize: 14,
+                  lineHeight: 18,
+                  textAlign: 'right',
+                  flexShrink: 1,
+                  marginLeft: 12,
+                }}
               >
                 {row.value}
               </Text>
@@ -140,46 +317,74 @@ export function GuestReservationDetailView() {
           ))}
         </View>
 
-        {reservation.canContact ? (
-          <Pressable className="h-12 flex-row items-center justify-center gap-2 rounded-[15px] bg-[#25D366]">
-            <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-            <Text variant="label-m" className="text-white">
-              Contactar anfitrião
-            </Text>
-          </Pressable>
-        ) : null}
-
-        {reservation.canCancel ? (
-          <Pressable
-            disabled={cancelReservation.isPending}
-            onPress={() => cancelReservation.mutate(reservation.id)}
-            className="h-12 items-center justify-center rounded-[15px] border border-[#FB2C36]"
-          >
-            <Text className="font-inter-bold text-[13px] text-[#FB2C36]">
-              {cancelReservation.isPending
-                ? 'A cancelar…'
-                : 'Cancelar reserva'}
-            </Text>
-          </Pressable>
+        {reservation.canContact || reservation.canCancel ? (
+          <View className="w-full flex-row" style={{ gap: 16 }}>
+            {reservation.canContact ? (
+              <ActionLink
+                tone="whatsapp"
+                onPress={() => openWhatsApp(reservation.hostWhatsapp)}
+              >
+                Contactar anfitrião
+              </ActionLink>
+            ) : null}
+            {reservation.canCancel ? (
+              <ActionLink
+                tone="cancel"
+                disabled={cancelReservation.isPending}
+                onPress={() => cancelReservation.mutate(reservation.id)}
+              >
+                {cancelReservation.isPending ? 'A cancelar…' : 'Cancelar'}
+              </ActionLink>
+            ) : null}
+          </View>
         ) : null}
       </ScrollView>
 
       {reservation.canPay || reservation.canReview ? (
         <StickyFooter>
           {reservation.canPay ? (
-            <Button
-              onPress={() =>
-                router.push({
-                  pathname: '/(guest)/pay/[id]',
-                  params: { id: reservation.id },
-                })
-              }
-            >
-              Efectuar pagamento
-            </Button>
+            <View style={{ gap: 16 }}>
+              <View className="flex-row items-center justify-between">
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{
+                    color: colors.ink.DEFAULT,
+                    fontSize: 14,
+                    lineHeight: 18,
+                  }}
+                >
+                  Total a pagar
+                </Text>
+                <Text
+                  variant="plain"
+                  className="font-manrope"
+                  style={{
+                    color: colors.brand.DEFAULT,
+                    fontSize: 16,
+                    lineHeight: 20,
+                    fontWeight: '600',
+                  }}
+                >
+                  {reservation.amount}
+                </Text>
+              </View>
+              <Button
+                className="h-14 rounded-2xl"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(guest)/pay/[id]',
+                    params: { id: reservation.id },
+                  })
+                }
+              >
+                Efetuar pagamento agora
+              </Button>
+            </View>
           ) : null}
-          {reservation.canReview ? (
+          {reservation.canReview && !reservation.canPay ? (
             <Button
+              className="h-14 rounded-2xl"
               onPress={() =>
                 router.push({
                   pathname: '/(guest)/review/[id]',

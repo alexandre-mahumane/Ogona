@@ -23,11 +23,10 @@ export const guestHome = {
   subtitle: 'Encontre o seu próximo alojamento',
   avatar: img.avatar,
   categories: [
-    { id: 'all', label: 'Todos', icon: 'apps' as const },
-    { id: 'apartments', label: 'Apartamentos', icon: 'business' as const },
-    { id: 'houses', label: 'Vivendas', icon: 'home' as const },
-    { id: 'rooms', label: 'Quartos', icon: 'bed' as const },
-    { id: 'hotels', label: 'Hotéis', icon: 'storefront' as const },
+    { id: 'all', label: 'Todos', icon: 'todos' as const },
+    { id: 'pensao', label: 'Pensão', icon: 'pensao' as const },
+    { id: 'guest_house', label: 'Guest House', icon: 'guest_house' as const },
+    { id: 'hotel', label: 'Hotel', icon: 'hotel' as const },
   ],
 };
 
@@ -37,6 +36,7 @@ export type GuestListing = {
   location: string;
   latitude?: number | null;
   longitude?: number | null;
+  distanceKm?: number | null;
   priceLabel: string;
   priceUnit: string;
   rating: number;
@@ -55,6 +55,15 @@ export type GuestListing = {
   ratingBreakdown: { stars: number; count: number }[];
 };
 
+export type GuestRoomRate = {
+  modality: StayModality;
+  label: string;
+  price: number;
+  unit: string;
+  min: number;
+  max: number;
+};
+
 export type GuestRoom = {
   id: string;
   name: string;
@@ -63,7 +72,7 @@ export type GuestRoom = {
   priceLabel: string;
   available: boolean;
   detail: string;
-  rates: { modality: StayModality; label: string; price: number; unit: string }[];
+  rates: GuestRoomRate[];
   unavailableDates?: string[];
 };
 
@@ -109,9 +118,9 @@ export const guestListings: GuestListing[] = [
         available: true,
         detail: 'Suite · 1 cama king · até 2 hóspedes',
         rates: [
-          { modality: 'hour', label: 'Por Hora', price: 600, unit: '/hora' },
-          { modality: 'night', label: 'Por Noite', price: 3200, unit: '/noite' },
-          { modality: 'month', label: 'Por Mês', price: 65000, unit: '/mês' },
+          { modality: 'hour', label: 'Por Hora', price: 600, unit: '/hora', min: 2, max: 12 },
+          { modality: 'night', label: 'Por Noite', price: 3200, unit: '/noite', min: 1, max: 30 },
+          { modality: 'month', label: 'Por Mês', price: 65000, unit: '/mês', min: 1, max: 12 },
         ],
       },
       {
@@ -123,9 +132,9 @@ export const guestListings: GuestListing[] = [
         available: true,
         detail: 'Quarto · 1 cama casal · até 2 hóspedes',
         rates: [
-          { modality: 'hour', label: 'Por Hora', price: 400, unit: '/hora' },
-          { modality: 'night', label: 'Por Noite', price: 1300, unit: '/noite' },
-          { modality: 'month', label: 'Por Mês', price: 28000, unit: '/mês' },
+          { modality: 'hour', label: 'Por Hora', price: 400, unit: '/hora', min: 2, max: 12 },
+          { modality: 'night', label: 'Por Noite', price: 1300, unit: '/noite', min: 1, max: 30 },
+          { modality: 'month', label: 'Por Mês', price: 28000, unit: '/mês', min: 1, max: 12 },
         ],
       },
       {
@@ -137,9 +146,9 @@ export const guestListings: GuestListing[] = [
         available: true,
         detail: 'Suite · 1 cama king · até 3 hóspedes',
         rates: [
-          { modality: 'hour', label: 'Por Hora', price: 800, unit: '/hora' },
-          { modality: 'night', label: 'Por Noite', price: 4500, unit: '/noite' },
-          { modality: 'month', label: 'Por Mês', price: 85000, unit: '/mês' },
+          { modality: 'hour', label: 'Por Hora', price: 800, unit: '/hora', min: 2, max: 12 },
+          { modality: 'night', label: 'Por Noite', price: 4500, unit: '/noite', min: 1, max: 30 },
+          { modality: 'month', label: 'Por Mês', price: 85000, unit: '/mês', min: 1, max: 12 },
         ],
       },
     ],
@@ -200,9 +209,9 @@ export const guestListings: GuestListing[] = [
         available: true,
         detail: 'Suite · 1 cama king · até 2 hóspedes',
         rates: [
-          { modality: 'hour', label: 'Por Hora', price: 600, unit: '/hora' },
-          { modality: 'night', label: 'Por Noite', price: 3200, unit: '/noite' },
-          { modality: 'month', label: 'Por Mês', price: 65000, unit: '/mês' },
+          { modality: 'hour', label: 'Por Hora', price: 600, unit: '/hora', min: 2, max: 12 },
+          { modality: 'night', label: 'Por Noite', price: 3200, unit: '/noite', min: 1, max: 30 },
+          { modality: 'month', label: 'Por Mês', price: 65000, unit: '/mês', min: 1, max: 12 },
         ],
       },
     ],
@@ -244,7 +253,7 @@ export const guestListings: GuestListing[] = [
         available: true,
         detail: 'Suite · 1 cama king · até 2 hóspedes',
         rates: [
-          { modality: 'night', label: 'Por Noite', price: 3675, unit: '/noite' },
+          { modality: 'night', label: 'Por Noite', price: 3675, unit: '/noite', min: 1, max: 30 },
         ],
       },
     ],
@@ -301,6 +310,7 @@ export type GuestReservation = {
   canCancel?: boolean;
   canContact?: boolean;
   canReview?: boolean;
+  hostWhatsapp?: string | null;
 };
 
 export const guestReservations: GuestReservation[] = [

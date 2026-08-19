@@ -48,7 +48,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "A Ogona precisa da sua localização para mostrar o mapa e preencher o endereço do alojamento."
+          "locationWhenInUsePermission": "A Ogona precisa da sua localização para mostrar alojamentos perto de si e o mapa."
         }
       ],
       "@rnmapbox/maps"

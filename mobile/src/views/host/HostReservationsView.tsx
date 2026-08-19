@@ -58,7 +58,7 @@ export function HostReservationsView() {
       className="bg-[#FCFCFC]"
       contentClassName="pb-8"
     >
-      <HostScreenHeader title="Reservas" />
+      <HostScreenHeader title="Gestão de Reservas" />
       <View className="gap-4 px-6 pt-4">
         <View className="h-[54px] flex-row items-center gap-3 rounded-xl border border-surface-border bg-surface px-4">
           <Ionicons name="search" size={20} color={colors.ink.secondary} />
@@ -138,7 +138,11 @@ export function HostReservationsView() {
                         {r.dates}
                       </Text>
                     </View>
-                    <Text className="font-inter-semibold text-[11px] text-brand">
+                    <Text
+                      variant="plain"
+                      className="font-inter-semibold"
+                      style={{ color: '#CA3500', fontSize: 11, lineHeight: 15 }}
+                    >
                       {r.amount}
                     </Text>
                   </View>
@@ -153,7 +157,11 @@ export function HostReservationsView() {
                       }}
                       className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#F0FDF4]"
                     >
-                      <Text className="font-inter-semibold text-[11px] text-[#00C950]">
+                      <Text
+                        variant="plain"
+                        className="font-inter-semibold"
+                        style={{ color: '#00C950', fontSize: 11, lineHeight: 15 }}
+                      >
                         Aceitar
                       </Text>
                     </Pressable>
@@ -165,7 +173,11 @@ export function HostReservationsView() {
                       }}
                       className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
                     >
-                      <Text className="font-inter-semibold text-[11px] text-[#FB2C36]">
+                      <Text
+                        variant="plain"
+                        className="font-inter-semibold"
+                        style={{ color: '#FB2C36', fontSize: 11, lineHeight: 15 }}
+                      >
                         Rejeitar
                       </Text>
                     </Pressable>

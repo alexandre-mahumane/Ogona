@@ -6,7 +6,10 @@ import {
   View,
 } from 'react-native';
 
-import { SafeAreaView } from '@/components/ui/SafeAreaView';
+import {
+  SafeAreaView,
+  type SafeAreaEdge,
+} from '@/components/ui/SafeAreaView';
 
 type Props = {
   children: ReactNode;
@@ -14,6 +17,7 @@ type Props = {
   className?: string;
   contentClassName?: string;
   keyboard?: boolean;
+  edges?: SafeAreaEdge[];
 };
 
 export function Screen({
@@ -22,6 +26,7 @@ export function Screen({
   className = '',
   contentClassName = '',
   keyboard = true,
+  edges,
 }: Props) {
   const body = scroll ? (
     <ScrollView
@@ -37,7 +42,7 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView className={`flex-1 bg-surface ${className}`}>
+    <SafeAreaView className={`flex-1 bg-surface ${className}`} edges={edges}>
       {keyboard ? (
         <KeyboardAvoidingView
           className="flex-1"

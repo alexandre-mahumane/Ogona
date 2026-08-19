@@ -11,18 +11,21 @@ export type PickedLocation = {
 };
 
 const CITY_PROVINCE: [string, string][] = [
-  ['maputo', 'maputo_cidade'],
   ['matola', 'maputo_provincia'],
   ['marracuene', 'maputo_provincia'],
+  ['maputo', 'maputo_cidade'],
   ['beira', 'sofala'],
   ['nampula', 'nampula'],
   ['pemba', 'cabo_delgado'],
   ['quelimane', 'zambezia'],
   ['tete', 'tete'],
   ['chimoio', 'manica'],
+  ['vilanculos', 'inhambane'],
+  ['tofo', 'inhambane'],
   ['inhambane', 'inhambane'],
   ['xai-xai', 'gaza'],
   ['xai xai', 'gaza'],
+  ['bilene', 'gaza'],
   ['lichinga', 'niassa'],
   ['nacala', 'nampula'],
 ];
@@ -59,17 +62,27 @@ export async function reverseGeocode(
   return fromGeocode(latitude, longitude, place);
 }
 
-export async function getCurrentLocation(): Promise<PickedLocation> {
+export async function getCurrentCoords(): Promise<{ lat: number; lng: number } | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') {
-    throw new Error('Precisamos da localização para preencher o endereço.');
-  }
+  if (status !== 'granted') return null;
 
   const position = await Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.Balanced,
   });
 
-  return reverseGeocode(position.coords.latitude, position.coords.longitude);
+  return {
+    lat: position.coords.latitude,
+    lng: position.coords.longitude,
+  };
+}
+
+export async function getCurrentLocation(): Promise<PickedLocation> {
+  const coords = await getCurrentCoords();
+  if (!coords) {
+    throw new Error('Precisamos da localização para preencher o endereço.');
+  }
+
+  return reverseGeocode(coords.lat, coords.lng);
 }
 
 export function formatPickedAddress(location: PickedLocation): string {

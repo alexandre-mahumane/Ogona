@@ -27,13 +27,15 @@ export function LocationPickerModal({
   onConfirm,
 }: Props) {
   const [center, setCenter] = useState({ latitude, longitude });
-  const [preview, setPreview] = useState('Mova o mapa para escolher o local');
+  const [preview, setPreview] = useState('Toque no mapa ou arraste o pino.');
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setCenter({ latitude, longitude });
-    setPreview('Mova o mapa para escolher o local');
+    setPreview(
+      `Toque no mapa ou arraste o pino. ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+    );
   }, [visible, latitude, longitude]);
 
   async function confirm() {
@@ -88,7 +90,9 @@ export function LocationPickerModal({
                   const [lng, lat] = state.properties.center;
                   if (lng == null || lat == null) return;
                   setCenter({ latitude: lat, longitude: lng });
-                  setPreview(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+                  setPreview(
+                    `Toque no mapa ou arraste o pino. ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                  );
                 }}
               >
                 <Mapbox.Camera

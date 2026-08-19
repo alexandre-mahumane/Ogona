@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
@@ -6,7 +7,7 @@ import {
   GuestScreenHeader,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, Screen, Text } from '@/components/ui';
+import { Screen, SelectField, Text } from '@/components/ui';
 import {
   useFiltersStore,
   type FiltersState,
@@ -14,72 +15,91 @@ import {
 import { colors } from '@/theme/colors';
 
 const lodgingTypes = [
-  { id: 'hotel', label: 'Hotel' },
-  { id: 'apartamento', label: 'Apartamento' },
-  { id: 'casa', label: 'Vivenda' },
-  { id: 'pensao', label: 'Pensão' },
-  { id: 'lodge', label: 'Lodge' },
+  { value: 'pensao', label: 'Pensão' },
+  { value: 'casa', label: 'Guest House' },
+  { value: 'hostel', label: 'Hostel' },
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'apartamento', label: 'Apartamento' },
+  { value: 'lodge', label: 'Lodge' },
 ];
 
 const ratingOptions = [
-  { id: 'all', label: 'Todos' },
-  { id: '3', label: '3+' },
-  { id: '4', label: '4+' },
-  { id: '4.5', label: '4.5+' },
+  { id: 'all', label: 'Todos', star: false },
+  { id: '3', label: '3+', star: true },
+  { id: '4', label: '4+', star: true },
+  { id: '4.5', label: '4.5+', star: true },
 ];
 
 const modalities = [
   { id: 'hour', label: 'Hora' },
   { id: 'night', label: 'Noite' },
+  { id: 'week', label: 'Semana' },
   { id: 'month', label: 'Mês' },
 ];
 
 const roomOptions = ['1+', '2+', '3+', '4+', '5+'];
-const bathOptions = ['1+', '2+', '3+'];
+const bathOptions = ['1+', '2+', '3+', '4+', '5+'];
 const parkingOptions = [
   { id: 'none', label: 'Sem vaga' },
-  { id: '1', label: '1+' },
   { id: '2', label: '2+' },
   { id: '3', label: '3+' },
+  { id: '4', label: '4+' },
+  { id: '5', label: '5+' },
 ];
 
-function ChipGroup({
-  options,
-  value,
-  onChange,
-  multi,
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text
+      variant="plain"
+      className="font-inter-semibold"
+      style={{ color: colors.ink.secondary, fontSize: 16, lineHeight: 20 }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function Pill({
+  label,
+  active,
+  onPress,
+  star,
 }: {
-  options: { id: string; label: string }[];
-  value: string | string[];
-  onChange: (id: string) => void;
-  multi?: boolean;
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  star?: boolean;
 }) {
   return (
-    <View className="flex-row flex-wrap gap-2">
-      {options.map((opt) => {
-        const active = multi
-          ? (value as string[]).includes(opt.id)
-          : value === opt.id;
-        return (
-          <Pressable
-            key={opt.id}
-            onPress={() => onChange(opt.id)}
-            className={`h-9 items-center justify-center rounded-full border px-3.5 ${
-              active
-                ? 'border-brand bg-brand'
-                : 'border-surface-border bg-surface'
-            }`}
-          >
-            <Text
-              variant="label-xs"
-              className={active ? 'text-white' : 'text-ink-secondary'}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <Pressable
+      onPress={onPress}
+      className="h-[34px] flex-row items-center rounded-full px-3"
+      style={{
+        backgroundColor: active ? colors.brand.DEFAULT : '#FFFFFF',
+        borderWidth: 1,
+        borderColor: active ? colors.brand.DEFAULT : colors.surface.border,
+      }}
+    >
+      {star ? (
+        <Ionicons
+          name="star"
+          size={12}
+          color={active ? '#FFFFFF' : colors.ink.secondary}
+          style={{ marginRight: 4 }}
+        />
+      ) : null}
+      <Text
+        variant="plain"
+        className={active ? 'font-inter' : 'font-inter-semibold'}
+        style={{
+          color: active ? '#FFFFFF' : colors.ink.secondary,
+          fontSize: 14,
+          lineHeight: 18,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -88,28 +108,54 @@ function Segmented({
   value,
   onChange,
 }: {
-  options: string[];
+  options: { id: string; label: string; star?: boolean }[];
   value: string;
-  onChange: (v: string) => void;
+  onChange: (id: string) => void;
 }) {
   return (
-    <View className="flex-row overflow-hidden rounded-xl border border-surface-border">
+    <View className="flex-row overflow-hidden rounded-xl">
       {options.map((opt, i) => {
-        const active = value === opt;
+        const active = value === opt.id;
+        const first = i === 0;
+        const last = i === options.length - 1;
         return (
           <Pressable
-            key={opt}
-            onPress={() => onChange(opt)}
-            className={`h-11 flex-1 items-center justify-center ${
-              active ? 'bg-brand' : 'bg-surface'
-            } ${i > 0 ? 'border-l border-surface-border' : ''}`}
+            key={opt.id}
+            onPress={() => onChange(opt.id)}
+            className="h-14 flex-row items-center justify-center px-4"
+            style={{
+              flex: opt.label.length > 4 ? undefined : 1,
+              backgroundColor: active ? colors.brand.soft : '#FCFCFC',
+              borderWidth: 1,
+              borderColor: active ? colors.brand.DEFAULT : '#F5F5F5',
+              marginLeft: first ? 0 : -1,
+              borderTopLeftRadius: first ? 12 : 0,
+              borderBottomLeftRadius: first ? 12 : 0,
+              borderTopRightRadius: last ? 12 : 0,
+              borderBottomRightRadius: last ? 12 : 0,
+              zIndex: active ? 2 : 1,
+            }}
           >
             <Text
-              variant="label-s"
-              className={active ? 'text-white' : 'text-ink-secondary'}
+              variant="plain"
+              numberOfLines={1}
+              style={{
+                color: colors.ink.secondary,
+                fontSize: opt.label.length > 4 ? 16 : 17,
+                lineHeight: 22,
+                fontWeight: opt.label.length > 4 ? '600' : '400',
+              }}
             >
-              {opt}
+              {opt.label}
             </Text>
+            {opt.star ? (
+              <Ionicons
+                name="star-outline"
+                size={10}
+                color={colors.ink.muted}
+                style={{ marginLeft: 4 }}
+              />
+            ) : null}
           </Pressable>
         );
       })}
@@ -117,21 +163,40 @@ function Segmented({
   );
 }
 
-function FieldLabel({ children }: { children: string }) {
+function PriceField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
   return (
-    <Text variant="label-s" className="mb-2">
-      {children}
-    </Text>
+    <View className="h-14 flex-1 flex-row items-center rounded-xl border border-[#F5F5F5] bg-surface px-4">
+      <Text variant="plain" style={{ color: colors.ink.muted, fontSize: 16, marginRight: 8 }}>
+        MZN
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        keyboardType="numeric"
+        placeholderTextColor={colors.ink.soft}
+        className="flex-1 font-inter text-[16px] text-ink"
+      />
+    </View>
   );
 }
 
 export function GuestFiltersView() {
   const saved = useFiltersStore((s) => s.filters);
   const setFilters = useFiltersStore((s) => s.setFilters);
+  const startExplore = useFiltersStore((s) => s.startExplore);
   const clearStore = useFiltersStore((s) => s.clearFilters);
 
   const [destination, setDestination] = useState(saved.destination);
-  const [types, setTypes] = useState<string[]>(saved.types);
+  const [propertyType, setPropertyType] = useState(saved.types[0] ?? '');
   const [rating, setRating] = useState(saved.rating);
   const [priceMin, setPriceMin] = useState(saved.priceMin);
   const [priceMax, setPriceMax] = useState(saved.priceMax);
@@ -142,7 +207,7 @@ export function GuestFiltersView() {
 
   const draft: FiltersState = {
     destination,
-    types,
+    types: propertyType ? [propertyType] : [],
     rating,
     priceMin,
     priceMax,
@@ -154,7 +219,7 @@ export function GuestFiltersView() {
 
   const clearAll = () => {
     setDestination('');
-    setTypes([]);
+    setPropertyType('');
     setRating('all');
     setPriceMin('');
     setPriceMax('');
@@ -165,25 +230,24 @@ export function GuestFiltersView() {
     clearStore();
   };
 
-  const toggleType = (id: string) => {
-    setTypes((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
-    );
-  };
-
   const apply = () => {
     setFilters(draft);
+    startExplore(draft.destination.trim() ? 'city' : 'all', draft.destination);
     router.navigate('/(guest)/(tabs)/explore');
   };
 
   return (
-    <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard>
+    <Screen className="bg-surface" contentClassName="flex-1" keyboard>
       <GuestScreenHeader
         title="Filtros"
         onBack={() => router.back()}
         right={
           <Pressable onPress={clearAll} hitSlop={8}>
-            <Text variant="label-s" className="text-brand">
+            <Text
+              variant="plain"
+              className="font-inter-semibold"
+              style={{ color: colors.brand.DEFAULT, fontSize: 14, lineHeight: 18 }}
+            >
               Limpar
             </Text>
           </Pressable>
@@ -194,88 +258,102 @@ export function GuestFiltersView() {
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="gap-6 px-6 pb-8 pt-6"
+        contentContainerClassName="gap-6 px-6 pb-8 pt-12"
       >
-        <View>
+        <View className="gap-2">
           <FieldLabel>Destino</FieldLabel>
-          <View className="h-[54px] justify-center rounded-input border border-surface-border bg-surface px-4">
+          <View className="h-14 flex-row items-center justify-between rounded-2xl border border-surface-border bg-surface px-4">
             <TextInput
               value={destination}
               onChangeText={setDestination}
-              placeholder="Cidade, bairro ou região"
+              placeholder="Pesquisa cidade ou bairro"
               placeholderTextColor={colors.ink.soft}
-              className="font-inter text-p-s text-ink"
+              className="flex-1 font-inter text-p-s text-ink"
             />
+            <Ionicons name="location-outline" size={24} color={colors.ink.muted} />
           </View>
         </View>
 
-        <View>
-          <FieldLabel>Tipo de alojamento</FieldLabel>
-          <ChipGroup
-            options={lodgingTypes}
-            value={types}
-            onChange={toggleType}
-            multi
-          />
-        </View>
+        <SelectField
+          label="Tipo de propriedade"
+          value={propertyType}
+          placeholder="Selecione o tipo de propriedade"
+          options={lodgingTypes}
+          onChange={setPropertyType}
+        />
 
-        <View>
+        <View className="gap-4">
           <FieldLabel>Avaliação mínima</FieldLabel>
-          <ChipGroup
-            options={ratingOptions}
-            value={rating}
-            onChange={setRating}
-          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="gap-3"
+          >
+            {ratingOptions.map((opt) => (
+              <Pill
+                key={opt.id}
+                label={opt.label}
+                star={opt.star}
+                active={rating === opt.id}
+                onPress={() => setRating(opt.id)}
+              />
+            ))}
+          </ScrollView>
         </View>
 
-        <View>
-          <FieldLabel>Preço (MZN)</FieldLabel>
-          <View className="flex-row gap-3">
-            <View className="h-[54px] flex-1 justify-center rounded-input border border-surface-border bg-surface px-4">
-              <TextInput
-                value={priceMin}
-                onChangeText={setPriceMin}
-                placeholder="Mín"
-                keyboardType="numeric"
-                placeholderTextColor={colors.ink.soft}
-                className="font-inter text-p-s text-ink"
-              />
-            </View>
-            <View className="h-[54px] flex-1 justify-center rounded-input border border-surface-border bg-surface px-4">
-              <TextInput
-                value={priceMax}
-                onChangeText={setPriceMax}
-                placeholder="Máx"
-                keyboardType="numeric"
-                placeholderTextColor={colors.ink.soft}
-                className="font-inter text-p-s text-ink"
-              />
-            </View>
+        <View className="gap-2">
+          <FieldLabel>Preço</FieldLabel>
+          <View className="flex-row gap-2">
+            <PriceField value={priceMin} onChange={setPriceMin} placeholder="500" />
+            <PriceField value={priceMax} onChange={setPriceMax} placeholder="10.000" />
           </View>
         </View>
 
-        <View>
-          <FieldLabel>Modalidade</FieldLabel>
-          <ChipGroup
-            options={modalities}
-            value={modality}
-            onChange={setModality}
+        <View className="gap-3">
+          <Text
+            variant="plain"
+            className="font-manrope"
+            style={{ color: colors.ink.DEFAULT, fontSize: 16, lineHeight: 20, fontWeight: '600' }}
+          >
+            Modalidade
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {modalities.map((opt) => (
+              <Pill
+                key={opt.id}
+                label={opt.label}
+                active={modality === opt.id}
+                onPress={() => setModality(opt.id)}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View className="gap-2">
+          <FieldLabel>Quartos</FieldLabel>
+          <Segmented
+            options={roomOptions.map((id, i) => ({
+              id,
+              label: id,
+              star: i === 0,
+            }))}
+            value={rooms}
+            onChange={setRooms}
           />
         </View>
 
-        <View>
-          <FieldLabel>Quartos</FieldLabel>
-          <Segmented options={roomOptions} value={rooms} onChange={setRooms} />
-        </View>
-
-        <View>
+        <View className="gap-2">
           <FieldLabel>Banheiros</FieldLabel>
-          <Segmented options={bathOptions} value={baths} onChange={setBaths} />
+          <Segmented
+            options={bathOptions.map((id) => ({ id, label: id }))}
+            value={baths}
+            onChange={setBaths}
+          />
         </View>
 
-        <View>
-          <FieldLabel>Vagas</FieldLabel>
-          <ChipGroup
+        <View className="gap-2">
+          <FieldLabel>Vagas de carro</FieldLabel>
+          <Segmented
             options={parkingOptions}
             value={parking}
             onChange={setParking}
@@ -284,18 +362,37 @@ export function GuestFiltersView() {
       </ScrollView>
 
       <StickyFooter>
-        <View className="flex-row gap-2.5">
+        <View className="flex-row gap-3">
           <Pressable
             onPress={clearAll}
-            className="h-14 flex-1 items-center justify-center rounded-button border border-ink-secondary"
+            className="h-[53px] flex-1 items-center justify-center rounded-[15px]"
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: colors.brand.DEFAULT,
+            }}
           >
-            <Text variant="label-m" className="text-ink-secondary">
+            <Text
+              variant="plain"
+              className="font-inter-semibold"
+              style={{ color: colors.brand.DEFAULT, fontSize: 15, lineHeight: 22 }}
+            >
               Limpar
             </Text>
           </Pressable>
-          <View className="flex-1">
-            <Button onPress={apply}>Aplicar filtros</Button>
-          </View>
+          <Pressable
+            onPress={apply}
+            className="h-[53px] flex-1 items-center justify-center rounded-[15px]"
+            style={{ backgroundColor: colors.brand.DEFAULT }}
+          >
+            <Text
+              variant="plain"
+              className="font-inter-semibold"
+              style={{ color: '#FFFFFF', fontSize: 15, lineHeight: 22 }}
+            >
+              Aplicar filtros
+            </Text>
+          </Pressable>
         </View>
       </StickyFooter>
     </Screen>

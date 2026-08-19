@@ -9,6 +9,7 @@ import type {
 
 export type DiscoverSearchParams = {
   q?: string;
+  city?: string;
   type?: string;
   minRating?: number;
   minPrice?: number;

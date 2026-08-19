@@ -1,11 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { HostScreenHeader } from '@/components/host/HostChrome';
 import { Screen, Text } from '@/components/ui';
-import { useRoomCalendar } from '@/hooks/useHost';
+import {
+  useBlockCalendarDates,
+  useRoomCalendar,
+  useSetCalendarPrice,
+  useUnblockCalendarDates,
+} from '@/hooks/useHost';
 import { colors } from '@/theme/colors';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -82,8 +94,14 @@ export function HostCalendarView() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [mode, setMode] = useState<'week' | 'month'>('month');
+  const [range, setRange] = useState<{ from?: string; to?: string }>({});
+  const [priceOpen, setPriceOpen] = useState(false);
+  const [priceValue, setPriceValue] = useState('');
 
   const calendarQuery = useRoomCalendar(resolvedRoomId, year, month);
+  const blockDates = useBlockCalendarDates();
+  const unblockDates = useUnblockCalendarDates();
+  const setPrice = useSetCalendarPrice();
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
 
   const marksByDay = useMemo(() => {
@@ -104,6 +122,150 @@ export function HostCalendarView() {
     const d = new Date(year, month - 1 + delta, 1);
     setYear(d.getFullYear());
     setMonth(d.getMonth() + 1);
+    setRange({});
+  };
+
+  const selectedRange = () => {
+    if (!range.from) return null;
+    return { from: range.from, to: range.to ?? range.from };
+  };
+
+  const onSelectDay = (iso?: string) => {
+    if (!iso) return;
+    if (!range.from || (range.from && range.to)) {
+      setRange({ from: iso });
+      return;
+    }
+    if (iso < range.from) setRange({ from: iso, to: range.from });
+    else setRange({ from: range.from, to: iso });
+  };
+
+  const needRoomAndRange = (action: string) => {
+    if (!resolvedRoomId) {
+      Alert.alert('Calendário', 'Abra o calendário a partir de um quarto.');
+      return null;
+    }
+    const next = selectedRange();
+    if (!next) {
+      Alert.alert(action, 'Seleccione um dia ou um intervalo no calendário.');
+      return null;
+    }
+    return next;
+  };
+
+  const runBlock = () => {
+    const next = needRoomAndRange('Bloquear datas');
+    if (!next || !resolvedRoomId) return;
+    blockDates.mutate(
+      { roomId: resolvedRoomId, ...next },
+      {
+        onSuccess: () => {
+          setRange({});
+          Alert.alert('Datas bloqueadas');
+        },
+        onError: (error) =>
+          Alert.alert(
+            'Não foi possível bloquear',
+            error instanceof Error ? error.message : 'Tente novamente.',
+          ),
+      },
+    );
+  };
+
+  const runUnblock = () => {
+    const next = needRoomAndRange('Desbloquear datas');
+    if (!next || !resolvedRoomId) return;
+    unblockDates.mutate(
+      { roomId: resolvedRoomId, ...next },
+      {
+        onSuccess: () => {
+          setRange({});
+          Alert.alert('Datas desbloqueadas');
+        },
+        onError: (error) =>
+          Alert.alert(
+            'Não foi possível desbloquear',
+            error instanceof Error ? error.message : 'Tente novamente.',
+          ),
+      },
+    );
+  };
+
+  const submitPrice = (amount: number) => {
+    const next = selectedRange();
+    if (!resolvedRoomId || !next) return;
+    setPrice.mutate(
+      { roomId: resolvedRoomId, ...next, amount },
+      {
+        onSuccess: () => {
+          setRange({});
+          setPriceOpen(false);
+          setPriceValue('');
+          Alert.alert('Preço actualizado');
+        },
+        onError: (error) =>
+          Alert.alert(
+            'Não foi possível alterar o preço',
+            error instanceof Error ? error.message : 'Tente novamente.',
+          ),
+      },
+    );
+  };
+
+  const runSetPrice = () => {
+    const next = needRoomAndRange('Alterar preço');
+    if (!next) return;
+    if (Platform.OS === 'ios') {
+      Alert.prompt('Novo preço (MT)', 'Valor por noite para as datas seleccionadas', (text) => {
+        const amount = Number(text);
+        if (!Number.isFinite(amount) || amount <= 0) {
+          Alert.alert('Preço inválido');
+          return;
+        }
+        submitPrice(amount);
+      });
+      return;
+    }
+    setPriceOpen(true);
+  };
+
+  const runCloseRoom = () => {
+    if (!resolvedRoomId) {
+      Alert.alert('Calendário', 'Abra o calendário a partir de um quarto.');
+      return;
+    }
+    const last = new Date(year, month, 0).getDate();
+    const from = `${year}-${String(month).padStart(2, '0')}-01`;
+    const to = `${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+    Alert.alert(
+      'Fechar quarto',
+      `Bloquear ${monthNames[month - 1]} ${year} neste quarto?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Fechar',
+          style: 'destructive',
+          onPress: () =>
+            blockDates.mutate(
+              { roomId: resolvedRoomId, from, to },
+              {
+                onSuccess: () => Alert.alert('Quarto fechado neste mês'),
+                onError: (error) =>
+                  Alert.alert(
+                    'Não foi possível fechar',
+                    error instanceof Error ? error.message : 'Tente novamente.',
+                  ),
+              },
+            ),
+        },
+      ],
+    );
+  };
+
+  const isInRange = (iso?: string) => {
+    if (!iso || !range.from) return false;
+    const end = range.to ?? range.from;
+    return iso >= range.from && iso <= end;
   };
 
   return (
@@ -111,11 +273,6 @@ export function HostCalendarView() {
       <HostScreenHeader
         title="Calendário"
         onBack={() => router.back()}
-        right={
-          <Pressable className="h-[30px] w-[30px] items-center justify-center rounded-[15px] bg-brand-soft">
-            <Ionicons name="create-outline" size={15} color={colors.brand.DEFAULT} />
-          </Pressable>
-        }
       />
 
       <View className="gap-6 px-6 pt-6">
@@ -177,14 +334,16 @@ export function HostCalendarView() {
               }
               const isCurrentMonth = !cell.fromPrev;
               const mark = isCurrentMonth ? marksByDay[cell.day] : undefined;
-              const selected = mark === 'selected';
+              const picked = isCurrentMonth && isInRange(cell.iso);
+              const selected = mark === 'selected' || picked;
               const blocked = mark === 'blocked';
               const highlight =
                 mark === 'checkin' || mark === 'checkout' || mark === 'booking';
 
               return (
-                <View
+                <Pressable
                   key={`${cell.day}-${index}`}
+                  onPress={() => isCurrentMonth && onSelectDay(cell.iso)}
                   className="h-11 w-[14.28%] items-center justify-center"
                 >
                   <View
@@ -221,7 +380,7 @@ export function HostCalendarView() {
                       />
                     ) : null}
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -254,31 +413,98 @@ export function HostCalendarView() {
             Ações
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            <Pressable className="h-16 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#FEF2F2] px-3">
+            <Pressable
+              onPress={runBlock}
+              className="h-16 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#FEF2F2] px-3"
+            >
               <Ionicons name="lock-closed-outline" size={16} color="#FB2C36" />
-              <Text variant="label-s" className="text-[13px] text-[#FB2C36]">
+              <Text
+                variant="plain"
+                className="font-inter-semibold"
+                style={{ color: '#FB2C36', fontSize: 13 }}
+              >
                 Bloquear datas
               </Text>
             </Pressable>
-            <Pressable className="h-16 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#F0FDF4] px-3">
+            <Pressable
+              onPress={runUnblock}
+              className="h-16 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#F0FDF4] px-3"
+            >
               <Ionicons name="lock-open-outline" size={16} color="#00C950" />
-              <Text variant="label-s" className="flex-1 text-[13px] text-[#00C950]">
+              <Text
+                variant="plain"
+                className="flex-1 font-inter-semibold"
+                style={{ color: '#00C950', fontSize: 13 }}
+              >
                 Desbloquear datas
               </Text>
             </Pressable>
-            <Pressable className="h-11 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#EFF6FF] px-3">
+            <Pressable
+              onPress={runSetPrice}
+              className="h-11 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#EFF6FF] px-3"
+            >
               <Ionicons name="cash-outline" size={16} color="#2B7FFF" />
-              <Text variant="label-s" className="text-[13px] text-[#2B7FFF]">
+              <Text
+                variant="plain"
+                className="font-inter-semibold"
+                style={{ color: '#2B7FFF', fontSize: 13 }}
+              >
                 Alterar preço
               </Text>
             </Pressable>
-            <Pressable className="h-11 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#FEFCE8] px-3">
+            <Pressable
+              onPress={runCloseRoom}
+              className="h-11 w-[48%] flex-row items-center gap-2 rounded-[15px] bg-[#FEFCE8] px-3"
+            >
               <Ionicons name="close-circle-outline" size={16} color="#F0B100" />
-              <Text variant="label-s" className="text-[13px] text-[#F0B100]">
+              <Text
+                variant="plain"
+                className="font-inter-semibold"
+                style={{ color: '#F0B100', fontSize: 13 }}
+              >
                 Fechar quarto
               </Text>
             </Pressable>
           </View>
+          {priceOpen ? (
+            <View className="gap-2 rounded-[15px] border border-surface-border bg-surface p-3">
+              <Text variant="label-s">Novo preço (MT / noite)</Text>
+              <TextInput
+                value={priceValue}
+                onChangeText={setPriceValue}
+                keyboardType="numeric"
+                placeholder="3200"
+                placeholderTextColor={colors.ink.soft}
+                className="h-11 rounded-xl border border-surface-border px-3 font-inter text-ink"
+              />
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={() => {
+                    setPriceOpen(false);
+                    setPriceValue('');
+                  }}
+                  className="h-10 flex-1 items-center justify-center rounded-[15px] border border-surface-border"
+                >
+                  <Text variant="label-s">Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    const amount = Number(priceValue);
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                      Alert.alert('Preço inválido');
+                      return;
+                    }
+                    submitPrice(amount);
+                  }}
+                  className="h-10 flex-1 items-center justify-center rounded-[15px] bg-brand"
+                >
+                  <Text variant="label-s" className="text-white">
+                    Guardar
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
       </View>
     </Screen>

@@ -22,39 +22,68 @@ type ExploreState = 'idle' | 'typing' | 'results';
 
 export function GuestExploreView() {
   const filters = useFiltersStore((s) => s.filters);
+  const patchFilters = useFiltersStore((s) => s.patchFilters);
+  const startExplore = useFiltersStore((s) => s.startExplore);
+  const exploreSession = useFiltersStore((s) => s.exploreSession);
   const hasFilters = filtersAreActive(filters);
   const [query, setQuery] = useState(filters.destination);
   const [submitted, setSubmitted] = useState(filters.destination);
-  const [mode, setMode] = useState<ExploreState>(hasFilters ? 'results' : 'idle');
+  const [cityExact, setCityExact] = useState(exploreSession.intent === 'city');
+  const [mode, setMode] = useState<ExploreState>(
+    exploreSession.intent === 'idle' ? 'idle' : 'results',
+  );
 
   useEffect(() => {
-    if (!hasFilters) return;
-    setQuery(filters.destination);
-    setSubmitted(filters.destination);
+    const session = useFiltersStore.getState().exploreSession;
+    const destination = useFiltersStore.getState().filters.destination;
+    if (session.intent === 'idle') {
+      setQuery('');
+      setSubmitted('');
+      setCityExact(false);
+      setMode('idle');
+      return;
+    }
+    if (session.intent === 'all') {
+      setQuery('');
+      setSubmitted('');
+      setCityExact(false);
+      setMode('results');
+      return;
+    }
+    setQuery(destination);
+    setSubmitted(destination);
+    setCityExact(session.intent === 'city');
     setMode('results');
-  }, [hasFilters, filters]);
+  }, [exploreSession.nonce]);
 
   const destinations = usePopularDestinations();
   const searchParams = useMemo(
     () => ({
-      ...filtersToSearchParams({
-        ...filters,
-        destination: submitted || filters.destination,
-      }),
+      ...filtersToSearchParams(
+        {
+          ...filters,
+          destination: submitted,
+        },
+        { match: cityExact ? 'city' : 'query' },
+      ),
       limit: 30,
     }),
-    [filters, submitted],
+    [filters, submitted, cityExact],
   );
   const search = useDiscoverSearch(
     searchParams,
-    mode === 'typing' || mode === 'results' || hasFilters,
+    mode === 'typing' || mode === 'results',
   );
 
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     return (search.data ?? [])
-      .filter((l) => l.name.toLowerCase().includes(q))
+      .filter(
+        (l) =>
+          l.name.toLowerCase().includes(q) ||
+          l.location.toLowerCase().includes(q),
+      )
       .slice(0, 8);
   }, [query, search.data]);
 
@@ -68,30 +97,40 @@ export function GuestExploreView() {
 
   const popular = destinations.data ?? [];
 
-  const goResults = (nextQuery?: string) => {
+  const goResults = (nextQuery?: string, asCity = false) => {
     const value = (nextQuery ?? query).trim();
     if (nextQuery !== undefined) setQuery(nextQuery);
     setSubmitted(value);
+    setCityExact(asCity && value.length > 0);
+    patchFilters({ destination: value });
     setMode('results');
+  };
+
+  const pickCity = (city: string) => {
+    startExplore('city', city, { resetExtras: true });
   };
 
   const onChangeQuery = (value: string) => {
     setQuery(value);
+    setCityExact(false);
     if (value.trim().length > 0) {
       setSubmitted(value.trim());
       setMode('typing');
-    } else if (hasFilters) {
-      setSubmitted('');
-      setMode('results');
-    } else {
-      setMode('idle');
+      return;
     }
+    setSubmitted('');
+    patchFilters({ destination: '' });
+    const otherFilters = filtersAreActive({ ...filters, destination: '' });
+    setMode(otherFilters ? 'results' : 'idle');
   };
 
   const clearQuery = () => {
     setQuery('');
     setSubmitted('');
-    setMode(hasFilters ? 'results' : 'idle');
+    setCityExact(false);
+    patchFilters({ destination: '' });
+    const otherFilters = filtersAreActive({ ...filters, destination: '' });
+    setMode(otherFilters ? 'results' : 'idle');
   };
 
   return (
@@ -155,22 +194,26 @@ export function GuestExploreView() {
                 Destinos populares
               </Text>
               <View className="flex-row flex-wrap justify-between gap-y-3">
-                {(popular.length ? popular : ['Maputo', 'Beira', 'Nampula']).map((city) => (
-                  <Pressable
-                    key={city}
-                    onPress={() => goResults(city)}
-                    className="h-11 w-[48%] flex-row items-center gap-2 rounded-full border border-surface-border bg-surface px-3"
-                  >
-                    <Ionicons
-                      name="trending-up"
-                      size={14}
-                      color={colors.brand.DEFAULT}
-                    />
-                    <Text className="font-inter-semibold text-[13px] text-ink">
-                      {city}
-                    </Text>
-                  </Pressable>
-                ))}
+                {popular.length === 0 ? (
+                  <Text variant="p-s">Nenhum destino com alojamentos ainda</Text>
+                ) : (
+                  popular.map((city) => (
+                    <Pressable
+                      key={city}
+                      onPress={() => pickCity(city)}
+                      className="h-11 w-[48%] flex-row items-center gap-2 rounded-full border border-surface-border bg-surface px-3"
+                    >
+                      <Ionicons
+                        name="trending-up"
+                        size={14}
+                        color={colors.brand.DEFAULT}
+                      />
+                      <Text className="font-inter-semibold text-[13px] text-ink">
+                        {city}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
               </View>
             </View>
           </View>

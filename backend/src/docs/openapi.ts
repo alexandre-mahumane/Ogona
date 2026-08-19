@@ -200,6 +200,53 @@ export const openApiDocument = {
         responses: { '201': { description: 'Criado' } },
       },
     },
+    '/auth/register/send-otp': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Enviar OTP de cadastro (telefone ainda não existe)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['phone', 'channel'],
+                properties: {
+                  phone: { type: 'string', example: '841111111' },
+                  channel: { type: 'string', enum: ['sms', 'whatsapp'] },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'OTP enviado' },
+          '409': { description: 'Número já registado' },
+        },
+      },
+    },
+    '/auth/register/verify-otp': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Verificar OTP de cadastro',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['phone', 'code'],
+                properties: {
+                  phone: { type: 'string', example: '841111111' },
+                  code: { type: 'string', example: '1234' },
+                },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Código válido' } },
+      },
+    },
     '/auth/login': {
       post: {
         tags: ['Auth'],

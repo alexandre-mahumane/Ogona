@@ -1,5 +1,11 @@
 import { type ReactNode } from 'react';
-import { Text as RNText, type TextProps } from 'react-native';
+import {
+  StyleSheet,
+  Text as RNText,
+  type StyleProp,
+  type TextProps,
+  type TextStyle,
+} from 'react-native';
 
 import { colors } from '@/theme/colors';
 
@@ -15,7 +21,8 @@ type Variant =
   | 'label-s'
   | 'label-xs'
   | 'logo'
-  | 'error';
+  | 'error'
+  | 'plain';
 
 type Props = TextProps & {
   children: ReactNode;
@@ -36,7 +43,26 @@ const variants: Record<Variant, string> = {
   'label-xs': 'font-inter-semibold text-label-xs text-ink-secondary',
   logo: 'font-oxygen text-[20px] leading-7 text-brand',
   error: 'font-inter text-p-s',
+  plain: 'font-inter',
 };
+
+const COLOR_CLASS =
+  /\btext-(?:ink(?:-\w+)?|brand(?:-\w+)?|white|black|danger|\[#[0-9A-Fa-f]{3,8}\])\b/g;
+
+function stripColorClasses(className: string) {
+  COLOR_CLASS.lastIndex = 0;
+  return className.replace(COLOR_CLASS, '').replace(/\s+/g, ' ').trim();
+}
+
+function hasColorClass(className: string) {
+  COLOR_CLASS.lastIndex = 0;
+  return COLOR_CLASS.test(className);
+}
+
+function styleHasColor(style?: StyleProp<TextStyle>) {
+  const flat = StyleSheet.flatten(style);
+  return Boolean(flat && flat.color != null);
+}
 
 export function Text({
   children,
@@ -45,10 +71,23 @@ export function Text({
   style,
   ...props
 }: Props) {
+  const colorFromStyle = styleHasColor(style);
+  const colorFromClass = hasColorClass(className);
+  const variantClass =
+    colorFromStyle || colorFromClass
+      ? stripColorClasses(variants[variant])
+      : variants[variant];
+  const extraClass = colorFromStyle ? stripColorClasses(className) : className;
+
   return (
     <RNText
-      className={`${variants[variant]} ${className}`}
-      style={[variant === 'error' ? { color: colors.danger } : undefined, style]}
+      className={`${variantClass} ${extraClass}`}
+      style={[
+        variant === 'error' && !colorFromStyle
+          ? { color: colors.danger }
+          : undefined,
+        style,
+      ]}
       {...props}
     >
       {children}

@@ -2,15 +2,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 
 import { FilterChips, HostScreenHeader } from '@/components/host/HostChrome';
+import { EditPencilIcon } from '@/components/icons/HomeIcons';
 import { Screen, Text } from '@/components/ui';
 import {
   propertyStatusStyle,
   type PropertyStatus,
 } from '@/data/host.mock';
-import { useHostProperties } from '@/hooks/useHost';
+import {
+  useDeleteProperty,
+  useHostProperties,
+  useSetPropertyStatus,
+} from '@/hooks/useHost';
 import { colors } from '@/theme/colors';
 
 const chips = [
@@ -24,12 +29,17 @@ const chips = [
 const PLACEHOLDER =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=400&fit=crop';
 
+const VALUE_COLOR = '#CA3500';
+const DELETE_COLOR = '#CA3500';
+
 export function HostPropertiesView() {
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const propertiesQuery = useHostProperties(
     query.trim() ? { search: query.trim() } : undefined,
   );
+  const setStatus = useSetPropertyStatus();
+  const deleteProperty = useDeleteProperty();
 
   const list = useMemo(() => {
     const rows = propertiesQuery.data ?? [];
@@ -47,6 +57,54 @@ export function HostPropertiesView() {
     });
   }, [filter, query, propertiesQuery.data]);
 
+  const confirmDelete = (id: string, name: string) => {
+    Alert.alert(
+      'Eliminar propriedade',
+      `Tem a certeza que quer eliminar "${name}"? Esta acção não pode ser revertida.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () =>
+            deleteProperty.mutate(id, {
+              onError: (error) =>
+                Alert.alert(
+                  'Não foi possível eliminar',
+                  error instanceof Error ? error.message : 'Tente novamente.',
+                ),
+            }),
+        },
+      ],
+    );
+  };
+
+  const toggleVisibility = (id: string, hidden: boolean, name: string) => {
+    Alert.alert(
+      hidden ? 'Publicar propriedade' : 'Ocultar propriedade',
+      hidden
+        ? `Publicar "${name}" outra vez?`
+        : `"${name}" deixa de aparecer para os hóspedes.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: hidden ? 'Publicar' : 'Ocultar',
+          onPress: () =>
+            setStatus.mutate(
+              { id, status: hidden ? 'published' : 'hidden' },
+              {
+                onError: (error) =>
+                  Alert.alert(
+                    'Não foi possível actualizar',
+                    error instanceof Error ? error.message : 'Tente novamente.',
+                  ),
+              },
+            ),
+        },
+      ],
+    );
+  };
+
   return (
     <Screen
       scroll
@@ -55,7 +113,7 @@ export function HostPropertiesView() {
       contentClassName="pb-8"
     >
       <HostScreenHeader
-        title="Propriedades"
+        title="Gerir Propriedades"
         right={
           <Pressable onPress={() => router.push('/(host)/add-property')}>
             <Text variant="label-s" className="text-brand">
@@ -71,7 +129,7 @@ export function HostPropertiesView() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Nome ou localização"
+            placeholder="Pesquisar propriedade"
             placeholderTextColor={colors.ink.soft}
             className="flex-1 font-inter text-p-s text-ink"
           />
@@ -91,6 +149,7 @@ export function HostPropertiesView() {
             </Text>
             {list.map((p) => {
               const style = propertyStatusStyle[p.status as PropertyStatus];
+              const hidden = p.status === 'hidden';
               return (
                 <Pressable
                   key={p.id}
@@ -136,7 +195,11 @@ export function HostPropertiesView() {
                           i < 2 ? 'border-r border-surface-border' : ''
                         }`}
                       >
-                        <Text className="font-inter-semibold text-[13px] text-ink">
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold"
+                          style={{ color: VALUE_COLOR, fontSize: 13, lineHeight: 18 }}
+                        >
                           {m.v}
                         </Text>
                         <Text className="font-inter-semibold text-[10px] text-ink-soft">
@@ -146,42 +209,65 @@ export function HostPropertiesView() {
                     ))}
                   </View>
                   <View className="flex-row">
-                    {[
-                      { icon: 'create-outline' as const, label: 'Editar' },
-                      { icon: 'bed-outline' as const, label: 'Quartos' },
-                      {
-                        icon:
-                          p.status === 'hidden'
-                            ? ('eye-outline' as const)
-                            : ('eye-off-outline' as const),
-                        label: p.status === 'hidden' ? 'Publicar' : 'Ocultar',
-                      },
-                      {
-                        icon: 'trash-outline' as const,
-                        label: 'Eliminar',
-                        danger: true,
-                      },
-                    ].map((a, i) => (
-                      <Pressable
-                        key={a.label}
-                        className={`h-[38px] flex-1 flex-row items-center justify-center gap-1 ${
-                          i < 3 ? 'border-r border-[#F5F5F5]' : ''
-                        }`}
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push({
+                          pathname: '/(host)/add-property',
+                          params: { propertyId: p.id },
+                        });
+                      }}
+                      className="h-[38px] flex-1 flex-row items-center justify-center gap-1 border-r border-[#F5F5F5]"
+                    >
+                      <EditPencilIcon size={14} color="#A1A1A1" />
+                      <Text className="font-inter-semibold text-[11px] text-ink-secondary">
+                        Editar
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push(`/(host)/property/${p.id}`);
+                      }}
+                      className="h-[38px] flex-1 flex-row items-center justify-center gap-1 border-r border-[#F5F5F5]"
+                    >
+                      <Ionicons name="bed-outline" size={14} color="#A1A1A1" />
+                      <Text className="font-inter-semibold text-[11px] text-ink-secondary">
+                        Quartos
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleVisibility(p.id, hidden, p.name);
+                      }}
+                      className="h-[38px] flex-1 flex-row items-center justify-center gap-1 border-r border-[#F5F5F5]"
+                    >
+                      <Ionicons
+                        name={hidden ? 'eye-outline' : 'eye-off-outline'}
+                        size={14}
+                        color="#A1A1A1"
+                      />
+                      <Text className="font-inter-semibold text-[11px] text-ink-secondary">
+                        {hidden ? 'Publicar' : 'Ocultar'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        confirmDelete(p.id, p.name);
+                      }}
+                      className="h-[38px] flex-1 flex-row items-center justify-center gap-1"
+                    >
+                      <Ionicons name="trash-outline" size={14} color={DELETE_COLOR} />
+                      <Text
+                        variant="plain"
+                        className="font-inter-semibold"
+                        style={{ color: DELETE_COLOR, fontSize: 11, lineHeight: 15 }}
                       >
-                        <Ionicons
-                          name={a.icon}
-                          size={14}
-                          color={a.danger ? '#FB2C36' : '#A1A1A1'}
-                        />
-                        <Text
-                          className={`font-inter-semibold text-[11px] ${
-                            a.danger ? 'text-[#FB2C36]' : 'text-ink-secondary'
-                          }`}
-                        >
-                          {a.label}
-                        </Text>
-                      </Pressable>
-                    ))}
+                        Eliminar
+                      </Text>
+                    </Pressable>
                   </View>
                 </Pressable>
               );

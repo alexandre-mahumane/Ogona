@@ -44,7 +44,12 @@ describe('Guest discover + reviews + favorites', () => {
       .get('/api/v1/discover/popular-destinations')
       .expect(200);
 
-    expect(popular.body.data.destinations).toHaveLength(6);
+    expect(popular.body.data.destinations.length).toBeGreaterThanOrEqual(1);
+    expect(
+      popular.body.data.destinations.every(
+        (d: { propertiesCount: number }) => d.propertiesCount >= 1,
+      ),
+    ).toBe(true);
     expect(popular.body.data.destinations[0].name).toBe('Maputo');
     expect(popular.body.data.destinations[0].propertiesCount).toBeGreaterThanOrEqual(1);
 
@@ -69,6 +74,18 @@ describe('Guest discover + reviews + favorites', () => {
       .get('/api/v1/discover/properties?q=Polana')
       .expect(200);
     expect(search.body.data.properties.length).toBeGreaterThanOrEqual(1);
+
+    const byCity = await request(getApp())
+      .get('/api/v1/discover/properties?city=Maputo')
+      .expect(200);
+    expect(byCity.body.data.properties.some((p: { id: string }) => p.id === property.id)).toBe(
+      true,
+    );
+
+    const otherCity = await request(getApp())
+      .get('/api/v1/discover/properties?city=Beira')
+      .expect(200);
+    expect(otherCity.body.data.properties).toHaveLength(0);
   });
 
   it('gets property and room by id publicly', async () => {

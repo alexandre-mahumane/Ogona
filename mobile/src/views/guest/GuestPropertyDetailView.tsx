@@ -2,14 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ComponentProps } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FavoriteButton, StickyFooter } from '@/components/guest/GuestChrome';
+import { StatusBadge } from '@/components/guest/GuestChrome';
 import { ImageLightbox } from '@/components/guest/ImageLightbox';
 import { PropertyMap } from '@/components/maps/PropertyMap';
 import { Screen, Text } from '@/components/ui';
-import { usePropertyDetail, useToggleFavorite } from '@/hooks/useDiscover';
+import { usePropertyDetail } from '@/hooks/useDiscover';
+import { propertyTypeLabel } from '@/lib/mappers/guest';
 import { colors } from '@/theme/colors';
+
+const HERO_WIDTH = Dimensions.get('window').width;
 
 type TabId = 'details' | 'photos' | 'map' | 'reviews';
 
@@ -28,13 +40,14 @@ const amenityIcon: Record<string, ComponentProps<typeof Ionicons>['name']> = {
 };
 
 export function GuestPropertyDetailView() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const propertyQuery = usePropertyDetail(id ? String(id) : undefined);
-  const toggleFavorite = useToggleFavorite();
   const listing = propertyQuery.data;
   const [tab, setTab] = useState<TabId>('details');
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [heroPage, setHeroPage] = useState(0);
 
   const openGallery = (index: number) => {
     setGalleryIndex(index);
@@ -75,264 +88,415 @@ export function GuestPropertyDetailView() {
   const galleryImages = listing.images.length
     ? listing.images
     : [listing.image];
+  const typeLabel = propertyTypeLabel(listing.propertyType);
+
+  const onHeroScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = e.nativeEvent.layoutMeasurement.width || 1;
+    setHeroPage(Math.round(e.nativeEvent.contentOffset.x / width));
+  };
 
   return (
-    <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard={false}>
+    <Screen
+      className="bg-surface"
+      contentClassName="flex-1"
+      keyboard={false}
+      edges={['left', 'right', 'bottom']}
+    >
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerClassName="pb-6"
       >
-        <Pressable
-          onPress={() => openGallery(0)}
-          className="relative h-[200px] w-full bg-surface-muted"
-        >
-          <Image
-            source={{ uri: listing.image }}
-            style={{ width: '100%', height: 200 }}
-            contentFit="cover"
-          />
+        <View className="relative h-[200px] w-full bg-surface-muted">
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={onHeroScroll}
+            scrollEventThrottle={16}
+          >
+            {galleryImages.map((uri, i) => (
+              <Pressable
+                key={`${uri}-${i}`}
+                onPress={() => openGallery(i)}
+                style={{ width: HERO_WIDTH }}
+              >
+                <Image
+                  source={{ uri }}
+                  style={{ width: HERO_WIDTH, height: 200 }}
+                  contentFit="cover"
+                />
+              </Pressable>
+            ))}
+          </ScrollView>
+
           <Pressable
             onPress={() => router.back()}
-            className="absolute left-4 top-4 h-10 w-10 items-center justify-center rounded-full bg-surface"
+            className="absolute left-6 h-8 w-8 items-center justify-center rounded-full border border-surface-border bg-surface"
+            style={{ top: insets.top + 8 }}
           >
-            <Ionicons name="arrow-back" size={18} color={colors.ink.DEFAULT} />
+            <Ionicons name="chevron-back" size={20} color="#404040" />
           </Pressable>
-          <View className="absolute right-4 top-4">
-            <FavoriteButton
-              active={listing.favorite}
-              onPress={() =>
-                toggleFavorite.mutate({
-                  propertyId: listing.id,
-                  favorite: Boolean(listing.favorite),
-                })
-              }
-            />
-          </View>
-        </Pressable>
 
-        <View className="gap-4 px-6 pt-5">
-          <View className="gap-2">
-            <Text variant="h4">{listing.name}</Text>
-            <View className="flex-row items-center gap-1.5">
-              <Ionicons
-                name="location-outline"
-                size={14}
-                color={colors.ink.muted}
-              />
-              <Text variant="p-s">{listing.location}</Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <Ionicons name="star" size={14} color={colors.brand.DEFAULT} />
-              <Text variant="label-s">
-                {listing.rating} ({listing.reviewCount} avaliações)
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row flex-wrap gap-2">
-            {listing.amenities.map((a) => (
-              <View
-                key={a.label}
-                className="flex-row items-center gap-1.5 rounded-full border border-surface-border bg-surface px-3 py-1.5"
-              >
-                <Ionicons
-                  name={amenityIcon[a.icon] ?? 'checkmark-circle-outline'}
-                  size={14}
-                  color={colors.brand.DEFAULT}
+          <View className="absolute bottom-4 left-6 right-6 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1">
+              {galleryImages.map((_, i) => (
+                <View
+                  key={i}
+                  className="rounded-full"
+                  style={{
+                    width: i === heroPage ? 12 : 6,
+                    height: 6,
+                    backgroundColor:
+                      i === heroPage ? colors.brand.DEFAULT : colors.brand.soft,
+                  }}
                 />
-                <Text variant="label-xs">{a.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View className="flex-row rounded-xl border border-surface-border bg-surface p-1">
-            {tabs.map((t) => {
-              const active = tab === t.id;
-              return (
-                <Pressable
-                  key={t.id}
-                  onPress={() => setTab(t.id)}
-                  className={`h-9 flex-1 items-center justify-center rounded-lg ${
-                    active ? 'bg-brand' : ''
-                  }`}
+              ))}
+            </View>
+            {typeLabel ? (
+              <View
+                className="rounded-full px-3 py-1.5"
+                style={{ backgroundColor: colors.brand.soft }}
+              >
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{ color: colors.brand.DEFAULT, fontSize: 14, lineHeight: 18 }}
                 >
+                  {typeLabel}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View className="gap-8 px-6 pt-4">
+          <View className="gap-4">
+            <View className="flex-row items-start justify-between gap-6">
+              <View className="flex-1 gap-1">
+                <Text variant="h5">{listing.name}</Text>
+                <Text variant="p-s">{listing.location}</Text>
+              </View>
+              <View className="flex-row items-center gap-0.5 pt-0.5">
+                <Ionicons name="star" size={20} color={colors.brand.DEFAULT} />
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{ color: colors.ink.DEFAULT, fontSize: 12, lineHeight: 16 }}
+                >
+                  {listing.rating} ({listing.reviewCount})
+                </Text>
+              </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-1.5"
+            >
+              {listing.amenities.map((a) => (
+                <View
+                  key={a.label}
+                  className="flex-row items-center gap-1.5 rounded-full bg-[#FCFCFC] px-2 py-1"
+                >
+                  <Ionicons
+                    name={amenityIcon[a.icon] ?? 'checkmark-circle-outline'}
+                    size={14}
+                    color={colors.ink.muted}
+                  />
                   <Text
-                    variant="label-xs"
-                    className={active ? 'text-white' : 'text-ink-secondary'}
+                    variant="plain"
+                    className="font-inter-semibold"
+                    style={{ color: colors.ink.muted, fontSize: 12, lineHeight: 16 }}
                   >
-                    {t.label}
+                    {a.label}
                   </Text>
-                </Pressable>
-              );
-            })}
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
-          {tab === 'details' ? (
-            <View className="gap-5">
-              <View className="gap-2">
-                <Text variant="label-s" className="font-inter-bold">
-                  Sobre
-                </Text>
-                <Text variant="p-s">{listing.description}</Text>
-              </View>
-
-              <View className="gap-3">
-                <Text variant="label-s" className="font-inter-bold">
-                  Quartos disponíveis
-                </Text>
-                {listing.rooms.map((room) => (
-                  <View
-                    key={room.id}
-                    className="overflow-hidden rounded-[15px] border border-[#F5F5F5] bg-surface"
+          <View className="gap-6">
+            <View className="flex-row border-b border-[#F5F5F5]">
+              {tabs.map((t) => {
+                const active = tab === t.id;
+                return (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => setTab(t.id)}
+                    className="h-10 flex-1 items-center justify-center"
+                    style={{
+                      borderBottomWidth: 1,
+                      borderBottomColor: active
+                        ? colors.brand.DEFAULT
+                        : 'transparent',
+                      marginBottom: -1,
+                    }}
                   >
-                    <View className="flex-row gap-3 p-3">
-                    <Pressable onPress={() => openGallery(0)}>
-                      <Image
-                        source={{ uri: room.image }}
-                        style={{ width: 72, height: 72, borderRadius: 12 }}
-                        contentFit="cover"
-                      />
-                    </Pressable>
-                      <View className="flex-1 justify-between py-0.5">
-                        <View>
-                          <Text variant="label-s">{room.name}</Text>
-                          <Text variant="p-xs">{room.detail}</Text>
+                    <Text
+                      variant="plain"
+                      className="font-inter-semibold"
+                      style={{
+                        color: active ? colors.brand.DEFAULT : colors.ink.muted,
+                        fontSize: 14,
+                        lineHeight: 18,
+                      }}
+                    >
+                      {t.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {tab === 'details' ? (
+              <View className="gap-8">
+                <View className="gap-2">
+                  <Text variant="h5">Sobre</Text>
+                  <Text variant="p-m">{listing.description}</Text>
+                </View>
+
+                <View className="gap-4">
+                  <Text variant="h5">Quartos disponíveis</Text>
+                  {listing.rooms.map((room) => (
+                    <View
+                      key={room.id}
+                      className="flex-row overflow-hidden rounded-xl border border-[#F5F5F5] bg-surface"
+                    >
+                      <Pressable onPress={() => openGallery(0)}>
+                        <Image
+                          source={{ uri: room.image }}
+                          style={{ width: 124, height: 98 }}
+                          contentFit="cover"
+                        />
+                      </Pressable>
+                      <View className="flex-1 justify-between p-3">
+                        <View className="flex-row items-start justify-between gap-3">
+                          <View className="flex-1 gap-0.5">
+                            <Text
+                              variant="plain"
+                              numberOfLines={1}
+                              style={{
+                                color: '#404040',
+                                fontSize: 16,
+                                lineHeight: 16,
+                                fontWeight: '500',
+                              }}
+                            >
+                              {room.name}
+                            </Text>
+                            <Text
+                              variant="plain"
+                              style={{
+                                color: colors.ink.muted,
+                                fontSize: 12,
+                                lineHeight: 16,
+                              }}
+                            >
+                              {room.guests} hóspede{room.guests === 1 ? '' : 's'}
+                            </Text>
+                          </View>
+                          <StatusBadge
+                            label={room.available ? 'Disponível' : 'Indisponível'}
+                            tone={room.available ? 'green' : 'orange'}
+                          />
                         </View>
-                        <Text variant="label-s" className="text-brand">
-                          {room.priceLabel}
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-row items-center gap-1">
+                            <Text variant="label-s">{room.priceLabel}</Text>
+                            <Text variant="p-xs">/ noite</Text>
+                          </View>
+                          <Pressable
+                            onPress={() => goBook(room.id)}
+                            className="h-7 items-center justify-center rounded-xl px-3.5"
+                            style={{ backgroundColor: colors.brand.DEFAULT }}
+                          >
+                            <Text
+                              variant="plain"
+                              className="font-inter-semibold"
+                              style={{ color: '#FFFFFF', fontSize: 12, lineHeight: 16 }}
+                            >
+                              Reservar
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                {listing.houseRules ? (
+                  <View className="gap-2">
+                    <Text variant="h5">Regras da casa</Text>
+                    <View className="flex-row items-start gap-2.5 rounded-lg border border-[#F5F5F5] bg-[#FCFCFC] p-4">
+                      <Ionicons
+                        name="document-text-outline"
+                        size={24}
+                        color={colors.brand.DEFAULT}
+                      />
+                      <Text variant="p-s" className="flex-1">
+                        {listing.houseRules}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {tab === 'photos' ? (
+              <View className="flex-row flex-wrap" style={{ gap: 16 }}>
+                {galleryImages.map((uri, i) => (
+                  <Pressable
+                    key={`${uri}-${i}`}
+                    onPress={() => openGallery(i)}
+                    className="overflow-hidden rounded-xl"
+                    style={{ width: '47%' }}
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={{ width: '100%', height: 112 }}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            {tab === 'map' ? (
+              <PropertyMap
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+                title={listing.name}
+              />
+            ) : null}
+
+            {tab === 'reviews' ? (
+              <View className="gap-5">
+                <View className="flex-row items-center gap-9">
+                  <View className="w-[155px] items-center gap-2">
+                    <Text variant="h3">{listing.rating.toFixed(2)}</Text>
+                    <View className="flex-row items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Ionicons
+                          key={s}
+                          name={s <= Math.round(listing.rating) ? 'star' : 'star-outline'}
+                          size={16}
+                          color={colors.brand.DEFAULT}
+                        />
+                      ))}
+                    </View>
+                    <Text
+                      variant="plain"
+                      className="font-inter-semibold text-center"
+                      style={{ color: colors.ink.secondary, fontSize: 16 }}
+                    >
+                      {listing.rating >= 4.5
+                        ? 'Excelente'
+                        : listing.rating >= 4
+                          ? 'Muito bom'
+                          : 'Bom'}
+                    </Text>
+                    <Text
+                      variant="plain"
+                      className="font-inter-semibold text-center"
+                      style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+                    >
+                      Baseado em {listing.reviewCount} avaliações
+                    </Text>
+                  </View>
+                  <View className="flex-1 gap-2">
+                    {listing.ratingBreakdown.map((row) => (
+                      <View key={row.stars} className="flex-row items-center gap-3">
+                        <View className="w-8 flex-row items-center gap-1">
+                          <Text
+                            variant="plain"
+                            className="font-inter-semibold"
+                            style={{ color: colors.ink.muted, fontSize: 16 }}
+                          >
+                            {row.stars}
+                          </Text>
+                          <Ionicons name="star" size={12} color={colors.ink.muted} />
+                        </View>
+                        <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F5F5F5]">
+                          <View
+                            className="h-2 rounded-full"
+                            style={{
+                              backgroundColor: colors.brand.DEFAULT,
+                              width: `${Math.round((row.count / totalReviews) * 100)}%`,
+                            }}
+                          />
+                        </View>
+                        <Text
+                          variant="plain"
+                          className="font-inter-semibold w-4 text-center"
+                          style={{ color: colors.ink.DEFAULT, fontSize: 14 }}
+                        >
+                          {row.count}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View className="flex-row items-start gap-2.5 rounded-lg border border-[#F5F5F5] bg-[#FCFCFC] p-4">
+                  <Ionicons name="shield-checkmark-outline" size={24} color={colors.brand.DEFAULT} />
+                  <Text
+                    variant="plain"
+                    className="flex-1 font-inter-semibold"
+                    style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+                  >
+                    As avaliações são de hóspedes verificados que realmente se hospedaram nesta propriedade.
+                  </Text>
+                </View>
+
+                {listing.reviews.map((review) => (
+                  <View
+                    key={review.id}
+                    className="gap-2 rounded-xl border border-[#F5F5F5] bg-[#FCFCFC] p-4"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text variant="h6">{review.name}</Text>
+                      <View
+                        className="flex-row items-center gap-0.5 rounded-xl border border-[#F5F5F5] px-2 py-1"
+                        style={{ backgroundColor: colors.brand.soft }}
+                      >
+                        <Ionicons name="star" size={20} color={colors.brand.DEFAULT} />
+                        <Text
+                          variant="plain"
+                          style={{ color: colors.brand.DEFAULT, fontSize: 14 }}
+                        >
+                          {review.rating}
                         </Text>
                       </View>
                     </View>
-                    <View className="px-3 pb-3">
-                      <Pressable
-                        onPress={() => goBook(room.id)}
-                        className="h-10 items-center justify-center rounded-[15px] bg-brand"
-                      >
-                        <Text variant="label-s" className="text-white">
-                          Reservar
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
-          {tab === 'photos' ? (
-            <View className="flex-row flex-wrap gap-2">
-              {galleryImages.map((uri, i) => (
-                <Pressable
-                  key={`${uri}-${i}`}
-                  onPress={() => openGallery(i)}
-                  className="overflow-hidden rounded-xl"
-                  style={{ width: '48.5%' }}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={{ width: '100%', height: 120 }}
-                    contentFit="cover"
-                  />
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-
-          {tab === 'map' ? (
-            <PropertyMap
-              latitude={listing.latitude}
-              longitude={listing.longitude}
-              title={listing.name}
-            />
-          ) : null}
-
-          {tab === 'reviews' ? (
-            <View className="gap-5">
-              <View className="items-center gap-1 rounded-[15px] border border-[#F5F5F5] bg-surface py-5">
-                <Text className="font-manrope-bold text-[40px] text-ink">
-                  {listing.rating.toFixed(1)}
-                </Text>
-                <View className="flex-row items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Ionicons
-                      key={s}
-                      name="star"
-                      size={14}
-                      color={
-                        s <= Math.round(listing.rating)
-                          ? colors.brand.DEFAULT
-                          : '#E5E5E5'
-                      }
-                    />
-                  ))}
-                </View>
-                <Text variant="p-xs">
-                  {listing.reviewCount} avaliações
-                </Text>
-              </View>
-
-              <View className="gap-2">
-                {listing.ratingBreakdown.map((row) => (
-                  <View key={row.stars} className="flex-row items-center gap-2">
-                    <Text variant="label-xs" className="w-4">
-                      {row.stars}
-                    </Text>
-                    <View className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                      <View
-                        className="h-full rounded-full bg-brand"
-                        style={{
-                          width: `${Math.round((row.count / totalReviews) * 100)}%`,
-                        }}
-                      />
-                    </View>
-                    <Text variant="p-xs" className="w-6 text-right">
-                      {row.count}
+                    <Text variant="p-s">{review.comment}</Text>
+                    <Text variant="label-xs" style={{ color: colors.ink.soft }}>
+                      {review.when}
                     </Text>
                   </View>
                 ))}
               </View>
-
-              {listing.reviews.map((review) => (
-                <View
-                  key={review.id}
-                  className="gap-2 rounded-[15px] border border-[#F5F5F5] bg-surface p-4"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text variant="label-s">{review.name}</Text>
-                    <View className="flex-row items-center gap-1">
-                      <Ionicons
-                        name="star"
-                        size={12}
-                        color={colors.brand.DEFAULT}
-                      />
-                      <Text variant="label-xs">{review.rating}</Text>
-                    </View>
-                  </View>
-                  <Text variant="p-s">{review.comment}</Text>
-                  <Text variant="p-xs">{review.when}</Text>
-                </View>
-              ))}
-
-              <Text variant="p-xs" className="text-center">
-                Apenas hóspedes com reserva verificada podem avaliar.
-              </Text>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
         </View>
       </ScrollView>
 
-      <StickyFooter>
+      <View className="px-6 py-4">
         <Pressable
           onPress={() => goBook()}
-          className="h-14 flex-row items-center justify-center gap-2 rounded-button bg-brand px-5"
+          className="h-14 flex-row items-center justify-center gap-2 rounded-2xl px-5"
+          style={{ backgroundColor: colors.brand.DEFAULT }}
         >
-          <Ionicons name="calendar-outline" size={18} color="#fff" />
-          <Text variant="label-m" className="text-white">
-            Reservar agora
+          <Ionicons name="calendar-outline" size={20} color="#fff" />
+          <Text
+            variant="plain"
+            className="font-inter-semibold"
+            style={{ color: '#FFFFFF', fontSize: 16, lineHeight: 20 }}
+          >
+            Solicitar Reserva
           </Text>
         </Pressable>
-      </StickyFooter>
+      </View>
       <ImageLightbox
         images={galleryImages}
         index={galleryIndex}

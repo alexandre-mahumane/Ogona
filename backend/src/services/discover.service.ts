@@ -33,6 +33,12 @@ export class DiscoverService {
 
   async search(query: DiscoverPropertiesQuery, guestId?: string) {
     const rows = await discoverRepository.search(query, guestId);
+    console.info('[discover.search]', {
+      q: query.q ?? null,
+      city: query.city ?? null,
+      type: query.type ?? null,
+      count: rows.length,
+    });
     return {
       properties: rows.map(mapDiscoverCard),
       meta: {
@@ -51,14 +57,31 @@ export class DiscoverService {
     const cities = await discoverRepository.citiesSummary();
     const byName = new Map(cities.map((c) => [c.city.toLowerCase(), c]));
 
-    return POPULAR_DESTINATIONS.map((name) => {
+    const ordered = POPULAR_DESTINATIONS.flatMap((name) => {
       const match = byName.get(name.toLowerCase());
-      return {
-        name,
-        propertiesCount: match?.propertiesCount ?? 0,
-        coverImageUrl: match?.coverImageUrl ?? null,
-      };
+      if (!match || match.propertiesCount < 1) return [];
+      return [
+        {
+          name: match.city,
+          propertiesCount: match.propertiesCount,
+          coverImageUrl: match.coverImageUrl,
+        },
+      ];
     });
+
+    for (const city of cities) {
+      if (city.propertiesCount < 1) continue;
+      if (ordered.some((row) => row.name.toLowerCase() === city.city.toLowerCase())) {
+        continue;
+      }
+      ordered.push({
+        name: city.city,
+        propertiesCount: city.propertiesCount,
+        coverImageUrl: city.coverImageUrl,
+      });
+    }
+
+    return ordered;
   }
 
   async getProperty(propertyId: string, guestId?: string) {

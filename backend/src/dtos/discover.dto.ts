@@ -3,6 +3,7 @@ import { propertyTypeValues } from './property.dto';
 
 export const discoverPropertiesQueryDto = z.object({
   q: z.string().trim().max(120).optional(),
+  city: z.string().trim().max(120).optional(),
   type: z.enum(propertyTypeValues).optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
   minPrice: z.coerce.number().positive().optional(),

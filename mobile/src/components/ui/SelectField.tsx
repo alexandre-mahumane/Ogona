@@ -47,8 +47,13 @@ export function SelectField({
         }`}
       >
         <Text
-          variant="p-s"
-          className={selected ? 'text-ink' : 'text-ink-soft'}
+          variant="plain"
+          className="font-inter"
+          style={{
+            color: selected ? colors.ink.DEFAULT : colors.ink.soft,
+            fontSize: 14,
+            lineHeight: 18,
+          }}
         >
           {selected?.label ?? placeholder}
         </Text>
@@ -86,8 +91,13 @@ export function SelectField({
                     className="flex-row items-center justify-between py-3"
                   >
                     <Text
-                      variant="p-s"
-                      className={active ? 'text-brand' : 'text-ink'}
+                      variant="plain"
+                      className="font-inter"
+                      style={{
+                        color: active ? colors.brand.DEFAULT : colors.ink.DEFAULT,
+                        fontSize: 14,
+                        lineHeight: 18,
+                      }}
                     >
                       {option.label}
                     </Text>

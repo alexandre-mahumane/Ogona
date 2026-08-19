@@ -8,9 +8,12 @@ import {
   mapPropertyDetail,
 } from '@/lib/mappers/guest';
 
+export type HomeCoords = { lat: number; lng: number };
+
 export const discoverKeys = {
   all: ['discover'] as const,
-  home: () => [...discoverKeys.all, 'home'] as const,
+  home: (coords?: HomeCoords | null) =>
+    [...discoverKeys.all, 'home', coords?.lat ?? null, coords?.lng ?? null] as const,
   search: (params: DiscoverSearchParams) => [...discoverKeys.all, 'search', params] as const,
   cities: () => [...discoverKeys.all, 'cities'] as const,
   destinations: () => [...discoverKeys.all, 'destinations'] as const,
@@ -19,17 +22,21 @@ export const discoverKeys = {
   favorites: () => [...discoverKeys.all, 'favorites'] as const,
 };
 
-export function useDiscoverHome() {
+export function useDiscoverHome(coords?: HomeCoords | null) {
   return useQuery({
-    queryKey: discoverKeys.home(),
+    queryKey: discoverKeys.home(coords),
     queryFn: async () => {
-      const data = await discoverApi.home({ limit: 10 });
+      const data = await discoverApi.home({
+        limit: 10,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+      });
       return {
         nearYou: data.nearYou.map(mapDiscoverCardToListing),
         mostBooked: data.mostBooked.map(mapDiscoverCardToListing),
         cities: data.cities.map(mapCity),
       };
     },
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -38,7 +45,17 @@ export function useDiscoverSearch(params: DiscoverSearchParams, enabled = true) 
     queryKey: discoverKeys.search(params),
     enabled,
     queryFn: async () => {
+      if (__DEV__) {
+        console.log('[discover.search]', params);
+      }
       const data = await discoverApi.search(params);
+      if (__DEV__) {
+        console.log('[discover.search.result]', {
+          count: data.meta.count,
+          names: data.properties.map((p) => p.name),
+          cities: data.properties.map((p) => p.location.city),
+        });
+      }
       return data.properties.map(mapDiscoverCardToListing);
     },
   });

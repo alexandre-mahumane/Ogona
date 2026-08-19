@@ -79,7 +79,11 @@ export function HostDashboardView() {
               <Text className="mt-1 font-inter text-[11px] leading-[15px] text-ink-soft">
                 {stat.label}
               </Text>
-              <Text className="mt-1 font-inter-semibold text-[10px] leading-[15px] text-[#00C950]">
+              <Text
+                variant="plain"
+                className="mt-1 font-inter-semibold"
+                style={{ color: '#00C950', fontSize: 10, lineHeight: 15 }}
+              >
                 {stat.hint}
               </Text>
             </View>
@@ -97,7 +101,11 @@ export function HostDashboardView() {
                   <Text className="font-inter-semibold text-[11px] text-ink-secondary">
                     {item.label}
                   </Text>
-                  <Text className="font-manrope-bold text-[17px] text-[#CA3500]">
+                  <Text
+                    variant="plain"
+                    className="font-manrope-bold"
+                    style={{ color: '#CA3500', fontSize: 17, lineHeight: 22 }}
+                  >
                     {item.value}
                   </Text>
                 </View>
@@ -111,11 +119,13 @@ export function HostDashboardView() {
             <Text className="font-manrope-bold text-[13px] text-ink">
               Pedidos pendentes
             </Text>
-            <Pressable onPress={() => router.push('/(host)/(tabs)/reservations')}>
-              <Text variant="label-xs" className="text-brand">
-                Ver todos
-              </Text>
-            </Pressable>
+            {d.pending ? (
+              <Pressable onPress={() => router.push('/(host)/(tabs)/reservations')}>
+                <Text variant="label-xs" className="text-brand">
+                  Ver todos
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
           {d.pending ? (
             <Pressable
@@ -138,7 +148,11 @@ export function HostDashboardView() {
                     {d.pending.property}
                   </Text>
                 </View>
-                <Text className="font-inter-semibold text-[13px] text-brand">
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold"
+                  style={{ color: '#CA3500', fontSize: 13, lineHeight: 18 }}
+                >
                   {d.pending.amount}
                 </Text>
               </View>
@@ -157,7 +171,11 @@ export function HostDashboardView() {
                   }}
                   className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#F0FDF4]"
                 >
-                  <Text className="font-inter-semibold text-[11px] text-[#00C950]">
+                  <Text
+                    variant="plain"
+                    className="font-inter-semibold"
+                    style={{ color: '#00C950', fontSize: 11, lineHeight: 15 }}
+                  >
                     Aceitar
                   </Text>
                 </Pressable>
@@ -169,12 +187,22 @@ export function HostDashboardView() {
                   }}
                   className="h-[34px] flex-1 items-center justify-center rounded-[15px] bg-[#FEF2F2]"
                 >
-                  <Text className="font-inter-semibold text-[11px] text-[#FB2C36]">
+                  <Text
+                    variant="plain"
+                    className="font-inter-semibold"
+                    style={{ color: '#FB2C36', fontSize: 11, lineHeight: 15 }}
+                  >
                     Rejeitar
                   </Text>
                 </Pressable>
-                <Pressable className="h-[34px] w-[34px] items-center justify-center rounded-[15px] border border-surface-border">
-                  <Ionicons name="ellipsis-horizontal" size={14} color="#525252" />
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push(`/(host)/reservation/${d.pending!.id}` as Href);
+                  }}
+                  className="h-[34px] w-[34px] items-center justify-center rounded-[15px] border border-surface-border"
+                >
+                  <Ionicons name="chevron-forward" size={14} color="#525252" />
                 </Pressable>
               </View>
             </Pressable>

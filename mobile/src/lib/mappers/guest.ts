@@ -43,6 +43,21 @@ const modalityApi: Record<StayModality, BookingModality> = {
   month: 'mes',
 };
 
+export function propertyTypeLabel(type?: string | null) {
+  if (!type) return '';
+  const labels: Record<string, string> = {
+    pensao: 'Pensão',
+    apartamento: 'Apartamento',
+    hotel: 'Hotel',
+    casa: 'Guest House',
+    hostel: 'Hostel',
+    villa: 'Villa',
+    lodge: 'Lodge',
+    resort: 'Resort',
+  };
+  return labels[type] ?? type;
+}
+
 export function formatMt(value: number) {
   return `${Math.round(value).toLocaleString('pt-MZ')} MT`;
 }
@@ -67,6 +82,7 @@ export function mapDiscoverCardToListing(card: DiscoverCard): GuestListing {
     location,
     latitude: card.location.latitude,
     longitude: card.location.longitude,
+    distanceKm: card.distanceKm,
     priceLabel: price > 0 ? `MZN ${Math.round(price).toLocaleString('pt-MZ')}` : 'Sob consulta',
     priceUnit: card.priceModality === 'hora' ? 'hora' : 'noite',
     rating: card.rating.average,
@@ -103,6 +119,31 @@ function mapAmenities(codes: string[]) {
   return codes.map((code) => amenityMeta[code] ?? { icon: 'checkmark', label: code.replace(/_/g, ' ') });
 }
 
+const roomTypeLabels: Record<string, string> = {
+  individual: 'Individual',
+  casal: 'Casal',
+  twin: 'Twin',
+  triple: 'Triple',
+  suite: 'Suite',
+  familiar: 'Familiar',
+  estudio: 'Estúdio',
+  dormitorio: 'Dormitório',
+};
+
+const defaultRateLimits: Record<StayModality, { min: number; max: number }> = {
+  hour: { min: 2, max: 12 },
+  night: { min: 1, max: 30 },
+  month: { min: 1, max: 12 },
+};
+
+function rateMeta(ui: StayModality) {
+  return {
+    label: ui === 'hour' ? 'Por Hora' : ui === 'month' ? 'Por Mês' : 'Por Noite',
+    unit: ui === 'hour' ? '/hora' : ui === 'month' ? '/mês' : '/noite',
+    ...defaultRateLimits[ui],
+  };
+}
+
 function mapRoomSummary(
   room: DiscoverPropertyDetail['rooms'][number],
   full?: DiscoverRoomDetail | null,
@@ -112,12 +153,15 @@ function mapRoomSummary(
     .filter(([, amount]) => amount != null)
     .map(([modality, price]) => {
       const ui = toUiModality(modality);
+      const meta = rateMeta(ui);
+      const limits = full?.priceLimits?.[modality];
       return {
         modality: ui,
-        label:
-          ui === 'hour' ? 'Por Hora' : ui === 'month' ? 'Por Mês' : 'Por Noite',
+        label: meta.label,
         price,
-        unit: ui === 'hour' ? '/hora' : ui === 'month' ? '/mês' : '/noite',
+        unit: meta.unit,
+        min: limits?.min ?? meta.min,
+        max: limits?.max ?? meta.max,
       };
     });
 
@@ -129,6 +173,13 @@ function mapRoomSummary(
     ]),
   ].sort();
 
+  const typeLabel = roomTypeLabels[room.type] ?? room.type;
+  const detailParts = [
+    typeLabel,
+    full?.bedLabel,
+    `até ${room.maxCapacity} hóspede${room.maxCapacity === 1 ? '' : 's'}`,
+  ].filter(Boolean);
+
   return {
     id: room.id,
     name: room.name,
@@ -136,16 +187,15 @@ function mapRoomSummary(
     image: room.thumbnailUrl ?? PLACEHOLDER_IMAGE,
     priceLabel: priceFrom > 0 ? `MZN ${Math.round(priceFrom).toLocaleString('pt-MZ')}` : 'Sob consulta',
     available: room.available,
-    detail: `${room.type} · até ${room.maxCapacity} hóspede${room.maxCapacity === 1 ? '' : 's'}`,
+    detail: detailParts.join(' · '),
     rates:
       rates.length > 0
         ? rates
         : [
             {
               modality: toUiModality(room.priceModality ?? 'noite'),
-              label: 'Por Noite',
+              ...rateMeta(toUiModality(room.priceModality ?? 'noite')),
               price: priceFrom,
-              unit: '/noite',
             },
           ],
     unavailableDates,
@@ -275,7 +325,8 @@ export function mapGuestReservation(r: ApiReservation): GuestReservation {
     bannerTone = 'yellow';
   } else if (status === 'awaiting_payment') {
     bannerTitle = 'Reserva aprovada — aguardando pagamento';
-    bannerBody = 'O anfitrião aprovou o pedido. Conclua o pagamento antes do prazo.';
+    bannerBody =
+      'O anfitrião aprovou o seu pedido. Efetue o pagamento para confirmar a reserva.';
     bannerTone = 'blue';
   } else if (status === 'confirmed') {
     bannerTitle = 'Reserva confirmada';
@@ -317,5 +368,6 @@ export function mapGuestReservation(r: ApiReservation): GuestReservation {
     canCancel,
     canContact: Boolean(r.hostWhatsapp),
     canReview,
+    hostWhatsapp: r.hostWhatsapp,
   };
 }

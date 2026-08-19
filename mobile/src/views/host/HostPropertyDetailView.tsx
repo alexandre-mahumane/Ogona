@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
 import { HostScreenHeader } from '@/components/host/HostChrome';
+import { EditPencilIcon } from '@/components/icons/HomeIcons';
 import { Screen, Text } from '@/components/ui';
 import {
   propertyStatusStyle,
   roomStatusStyle,
 } from '@/data/host.mock';
-import { useHostProperty } from '@/hooks/useHost';
+import { useDeleteProperty, useHostProperty } from '@/hooks/useHost';
 import { colors } from '@/theme/colors';
 
 const PLACEHOLDER =
@@ -19,6 +20,7 @@ export function HostPropertyDetailView() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const propertyId = id ? String(id) : undefined;
   const propertyQuery = useHostProperty(propertyId);
+  const deleteProperty = useDeleteProperty();
   const property = propertyQuery.data?.property;
   const rooms = propertyQuery.data?.rooms ?? [];
 
@@ -47,8 +49,16 @@ export function HostPropertyDetailView() {
         title={property.name}
         onBack={() => router.back()}
         right={
-          <Pressable className="h-[30px] w-[30px] items-center justify-center rounded-[15px] bg-brand-soft">
-            <Ionicons name="create-outline" size={15} color={colors.brand.DEFAULT} />
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: '/(host)/add-property',
+                params: { propertyId: property.id },
+              })
+            }
+            className="h-[30px] w-[30px] items-center justify-center rounded-[15px] bg-brand-soft"
+          >
+            <EditPencilIcon size={15} color={colors.brand.DEFAULT} />
           </Pressable>
         }
       />
@@ -84,7 +94,11 @@ export function HostPropertyDetailView() {
                 key={stat.label}
                 className="flex-1 items-center rounded-[15px] border border-[#F5F5F5] bg-surface px-3 py-3"
               >
-                <Text className="font-manrope-bold text-[17px] text-ink">
+                <Text
+                  variant="plain"
+                  className="font-manrope-bold"
+                  style={{ color: '#CA3500', fontSize: 17, lineHeight: 22 }}
+                >
                   {stat.value}
                 </Text>
                 <Text variant="p-xs" className="text-ink-soft">
@@ -160,7 +174,19 @@ export function HostPropertyDetailView() {
         </View>
 
         <View className="flex-row gap-2">
-          <Pressable className="h-10 flex-1 items-center justify-center rounded-[15px] border border-brand bg-surface">
+          <Pressable
+            onPress={() => {
+              if (!firstRoomId) {
+                Alert.alert('Sem quartos', 'Adicione um quarto primeiro.');
+                return;
+              }
+              router.push({
+                pathname: '/(host)/calendar',
+                params: { roomId: firstRoomId },
+              });
+            }}
+            className="h-10 flex-1 items-center justify-center rounded-[15px] border border-brand bg-surface"
+          >
             <Text variant="label-xs" className="text-brand">
               Gerir quartos
             </Text>
@@ -195,13 +221,37 @@ export function HostPropertyDetailView() {
               Calendário
             </Text>
           </Pressable>
-          <Pressable className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-[15px] border border-surface-border">
+          <Pressable
+            onPress={() => {
+              if (!firstRoomId) {
+                Alert.alert('Sem quartos', 'Adicione um quarto primeiro.');
+                return;
+              }
+              router.push({
+                pathname: '/(host)/calendar',
+                params: { roomId: firstRoomId },
+              });
+            }}
+            className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-[15px] border border-surface-border"
+          >
             <Ionicons name="checkmark-circle-outline" size={13} color={colors.ink.secondary} />
             <Text variant="label-xs" className="font-inter-bold text-ink-secondary">
               Disponibilidade
             </Text>
           </Pressable>
-          <Pressable className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-[15px] border border-surface-border">
+          <Pressable
+            onPress={() => {
+              if (!firstRoomId) {
+                Alert.alert('Sem quartos', 'Adicione um quarto primeiro.');
+                return;
+              }
+              router.push({
+                pathname: '/(host)/calendar',
+                params: { roomId: firstRoomId },
+              });
+            }}
+            className="h-9 flex-1 flex-row items-center justify-center gap-1.5 rounded-[15px] border border-surface-border"
+          >
             <Ionicons name="cash-outline" size={13} color={colors.ink.secondary} />
             <Text variant="label-xs" className="font-inter-bold text-ink-secondary">
               Preços
@@ -209,9 +259,38 @@ export function HostPropertyDetailView() {
           </Pressable>
         </View>
 
-        <Pressable className="h-12 flex-row items-center justify-center gap-2 rounded-[15px] border border-[#FB2C36]">
-          <Ionicons name="trash-outline" size={15} color="#FB2C36" />
-          <Text className="font-inter-bold text-[13px] text-[#FB2C36]">
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              'Eliminar propriedade',
+              `Tem a certeza que quer eliminar "${property.name}"? Esta acção não pode ser revertida.`,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Eliminar',
+                  style: 'destructive',
+                  onPress: () =>
+                    deleteProperty.mutate(property.id, {
+                      onSuccess: () => router.replace('/(host)/(tabs)/properties'),
+                      onError: (error) =>
+                        Alert.alert(
+                          'Não foi possível eliminar',
+                          error instanceof Error ? error.message : 'Tente novamente.',
+                        ),
+                    }),
+                },
+              ],
+            )
+          }
+          className="h-12 flex-row items-center justify-center gap-2 rounded-[15px] border"
+          style={{ borderColor: '#CA3500' }}
+        >
+          <Ionicons name="trash-outline" size={15} color="#CA3500" />
+          <Text
+            variant="plain"
+            className="font-inter-bold"
+            style={{ color: '#CA3500', fontSize: 13, lineHeight: 18 }}
+          >
             Eliminar propriedade
           </Text>
         </Pressable>

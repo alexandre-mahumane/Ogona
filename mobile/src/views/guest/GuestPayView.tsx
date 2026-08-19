@@ -1,13 +1,13 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 import {
   GuestScreenHeader,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, Input, Screen, Text } from '@/components/ui';
+import { Button, Screen, Text } from '@/components/ui';
 import {
   useGuestReservation,
   usePayReservation,
@@ -77,80 +77,192 @@ export function GuestPayView() {
 
   if (phase === 'processing') {
     return (
-      <Screen contentClassName="items-center justify-center gap-4 px-6">
-        <ActivityIndicator size="large" color={colors.brand.DEFAULT} />
-        <Text variant="h5" className="text-center">
-          A processar pagamento…
-        </Text>
-        <Text variant="p-m" className="text-center">
-          Confirme o pedido na sua carteira móvel.
-        </Text>
+      <Screen className="bg-surface" contentClassName="flex-1 items-center justify-center px-6">
+        <View className="items-center" style={{ gap: 8 }}>
+          <View
+            className="items-center justify-center"
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 999,
+              borderWidth: 4,
+              borderColor: 'rgba(255, 105, 0, 0.25)',
+            }}
+          >
+            <ActivityIndicator size="small" color={colors.brand.DEFAULT} />
+          </View>
+          <Text
+            variant="plain"
+            className="font-manrope text-center"
+            style={{
+              color: colors.ink.DEFAULT,
+              fontSize: 16,
+              lineHeight: 20,
+              fontWeight: '600',
+            }}
+          >
+            A processar pagamento…
+          </Text>
+          <Text
+            variant="plain"
+            className="text-center"
+            style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+          >
+            Por favor aguarde
+          </Text>
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard>
-      <GuestScreenHeader
-        title="Pagamento"
-        onBack={() => router.back()}
-      />
+      <GuestScreenHeader title="Pagamento" onBack={() => router.back()} />
 
-      <View className="flex-1 justify-between px-6 pt-5">
-        <View className="gap-6">
-          <View className="gap-1">
-            <Text variant="h5">Método de pagamento</Text>
-            <Text variant="p-s">
-              Escolha a carteira e introduza o número
-            </Text>
-          </View>
+      <View className="flex-1 px-[19px] pt-6" style={{ gap: 16 }}>
+        <Text
+          variant="plain"
+          className="font-inter-semibold"
+          style={{ color: colors.ink.DEFAULT, fontSize: 14, lineHeight: 18 }}
+        >
+          Selecionar método de pagamento
+        </Text>
 
-          <View className="flex-row gap-3">
-            {wallets.map((wallet) => {
-              const active = method === wallet.id;
-              return (
-                <Pressable
-                  key={wallet.id}
-                  onPress={() => setMethod(wallet.id)}
-                  className={`h-24 flex-1 items-center justify-center gap-2 rounded-button border ${
-                    active
-                      ? 'border-brand bg-brand-soft'
-                      : 'border-surface-border bg-surface'
-                  }`}
+        <View className="flex-row" style={{ gap: 11 }}>
+          {wallets.map((wallet) => {
+            const active = method === wallet.id;
+            return (
+              <Pressable
+                key={wallet.id}
+                onPress={() => setMethod(wallet.id)}
+                className="items-center"
+                style={{
+                  width: 155,
+                  height: 97,
+                  paddingVertical: 19,
+                  gap: 8,
+                  borderRadius: 12,
+                  backgroundColor: active ? colors.brand.soft : '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: active
+                    ? colors.brand.DEFAULT
+                    : colors.surface.border,
+                }}
+              >
+                <Image
+                  source={wallet.logo}
+                  style={{ width: 32, height: 32 }}
+                  contentFit="contain"
+                />
+                <Text
+                  variant="plain"
+                  className="font-inter-semibold text-center"
+                  style={{
+                    color: colors.ink.DEFAULT,
+                    fontSize: 14,
+                    lineHeight: 18,
+                  }}
                 >
-                  <Image
-                    source={wallet.logo}
-                    style={{ width: 40, height: 40 }}
-                    contentFit="contain"
-                  />
-                  <Text variant="label-s">{wallet.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Input
-            label="Número de telefone"
-            keyboardType="phone-pad"
-            placeholder="+258 ..."
-            value={phone}
-            onChangeText={setPhone}
-          />
-
-          <View className="flex-row items-center justify-between rounded-[15px] border border-[#F5F5F5] bg-brand-soft px-4 py-4">
-            <Text variant="label-s">Total a pagar</Text>
-            <Text className="font-manrope-bold text-[17px] text-brand">
-              {reservation.amount}
-            </Text>
-          </View>
+                  {wallet.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
+
+        {method ? (
+          <>
+            <View style={{ gap: 8 }}>
+              <Text
+                variant="plain"
+                className="font-inter-semibold"
+                style={{
+                  color: colors.ink.secondary,
+                  fontSize: 14,
+                  lineHeight: 18,
+                }}
+              >
+                {method === 'mpesa' ? 'Número M-Pesa' : 'Número E-Mola'}
+              </Text>
+              <View
+                className="flex-row items-center"
+                style={{
+                  height: 54,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  backgroundColor: '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: colors.surface.border,
+                }}
+              >
+                <TextInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+258 84 000 000"
+                  placeholderTextColor={colors.ink.soft}
+                  className="flex-1 font-inter"
+                  style={{
+                    color: colors.ink.DEFAULT,
+                    fontSize: 16,
+                    lineHeight: 20,
+                  }}
+                />
+              </View>
+            </View>
+
+            <View
+              className="flex-row items-center justify-between"
+              style={{
+                padding: 15,
+                borderRadius: 15,
+                backgroundColor: '#FCFCFC',
+                borderWidth: 1,
+                borderColor: '#F5F5F5',
+              }}
+            >
+              <Text
+                variant="plain"
+                style={{ color: colors.ink.muted, fontSize: 14, lineHeight: 18 }}
+              >
+                Total a pagar
+              </Text>
+              <Text
+                variant="plain"
+                className="font-manrope"
+                style={{
+                  color: colors.brand.DEFAULT,
+                  fontSize: 16,
+                  lineHeight: 20,
+                  fontWeight: '600',
+                }}
+              >
+                {reservation.amount}
+              </Text>
+            </View>
+
+            <Text
+              variant="plain"
+              style={{ color: colors.ink.soft, fontSize: 12, lineHeight: 16 }}
+            >
+              Ao confirmar, receberá um PIN de confirmação no seu telemóvel para
+              verificar o pagamento.
+            </Text>
+          </>
+        ) : null}
       </View>
 
-      <StickyFooter>
-        <Button disabled={!canSubmit} onPress={confirm}>
-          Confirmar pagamento
-        </Button>
-      </StickyFooter>
+      {method ? (
+        <StickyFooter>
+          <Button
+            disabled={!canSubmit}
+            onPress={confirm}
+            className="h-14 rounded-2xl"
+          >
+            Confirmar pagamento
+          </Button>
+        </StickyFooter>
+      ) : null}
     </Screen>
   );
 }

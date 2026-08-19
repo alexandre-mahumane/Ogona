@@ -8,7 +8,7 @@ import type {
 import type { PropertyStatus, ReservationStatus } from '@/data/host.mock';
 import { formatMt } from '@/lib/mappers/guest';
 
-const propertyTypeLabel: Record<string, string> = {
+export const propertyTypeLabel: Record<string, string> = {
   pensao: 'Pensão',
   apartamento: 'Apartamento',
   hotel: 'Hotel',
@@ -17,6 +17,7 @@ const propertyTypeLabel: Record<string, string> = {
   villa: 'Villa',
   lodge: 'Lodge',
   resort: 'Resort',
+  guest_house: 'Guest House',
 };
 
 const propertyStatusMap: Record<string, { status: PropertyStatus; label: string }> = {
@@ -191,11 +192,23 @@ export const amenityApiByLabel: Record<string, string> = {
   'Wi-Fi gratuito': 'wifi_gratuito',
   'Ar condicionado': 'ar_condicionado',
   Televisão: 'televisao',
+  'Casa de banho privativa': 'casa_banho_privativa',
   'Água quente': 'agua_quente',
   Toalhas: 'toalhas',
   'Roupa de cama': 'roupa_de_cama',
+  'Mesa de trabalho': 'mesa_de_trabalho',
   Estacionamento: 'estacionamento',
-  Cozinha: 'cozinha',
+  Cozinha: 'kitchenette',
+  Minibar: 'minibar',
+  Cofre: 'cofre',
+  Varanda: 'varanda',
+  'Vista mar': 'vista_mar',
+  'Pequeno-almoço': 'pequeno_almoco',
+  Frigorífico: 'frigorifico',
+  Roupeiro: 'roupeiro',
+  'Secador de cabelo': 'secador_cabelo',
+  'Ferro de engomar': 'ferro_engomar',
+  'Rede mosquiteira': 'rede_mosquito',
 };
 
 export const propertyTypeApiByLabel: Record<string, string> = {
@@ -209,8 +222,16 @@ export const propertyTypeApiByLabel: Record<string, string> = {
 };
 
 export const roomTypeApiByLabel: Record<string, string> = {
+  Individual: 'individual',
+  Casal: 'casal',
+  Twin: 'twin',
+  Triple: 'triple',
   Suite: 'suite',
+  Familiar: 'familiar',
+  Estúdio: 'estudio',
+  Dormitório: 'dormitorio',
   Standard: 'casal',
+  'Quarto Deluxe': 'suite',
   'Quarto inteiro': 'familiar',
   'Quarto compartilhado': 'dormitorio',
 };

@@ -33,8 +33,13 @@ export function FilterChips({ chips, value, onChange }: Props) {
             }`}
           >
             <Text
-              variant="label-xs"
-              className={active ? 'text-white' : 'text-ink-secondary'}
+              variant="plain"
+              className="font-inter-semibold"
+              style={{
+                color: active ? '#FFFFFF' : colors.ink.secondary,
+                fontSize: 12,
+                lineHeight: 16,
+              }}
             >
               {chip.label}
             </Text>
@@ -52,9 +57,10 @@ type HeaderProps = {
 };
 
 export function HostScreenHeader({ title, onBack, right }: HeaderProps) {
+  const showBack = typeof onBack === 'function';
   return (
     <View className="flex-row items-center justify-between border-b border-[#F5F5F5] bg-surface px-6 pb-4 pt-5">
-      {onBack ? (
+      {showBack ? (
         <Pressable
           onPress={onBack}
           className="h-[34px] w-[34px] items-center justify-center rounded-full bg-surface-muted"
@@ -62,10 +68,12 @@ export function HostScreenHeader({ title, onBack, right }: HeaderProps) {
           <Ionicons name="arrow-back" size={16} color={colors.ink.secondary} />
         </Pressable>
       ) : (
-        <View className="w-[34px]" />
+        <View className={right ? 'w-[34px]' : 'w-0'} />
       )}
-      <Text className="font-manrope text-h5 text-ink">{title}</Text>
-      {right ?? <View className="w-[34px]" />}
+      <Text className="flex-1 text-center font-manrope text-h5 text-ink">
+        {title}
+      </Text>
+      {right ?? <View className={showBack ? 'w-[34px]' : 'w-0'} />}
     </View>
   );
 }
