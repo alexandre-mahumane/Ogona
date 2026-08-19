@@ -18,9 +18,12 @@ import 'react-native-reanimated';
 import '../global.css';
 
 import { AppProviders } from '@/providers/AppProviders';
+import { initMapbox } from '@/lib/maps/mapbox';
 import { colors } from '@/theme/colors';
 
 export { ErrorBoundary } from 'expo-router';
+
+initMapbox();
 
 SplashScreen.preventAutoHideAsync();
 

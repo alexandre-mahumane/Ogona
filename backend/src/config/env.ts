@@ -15,6 +15,21 @@ const envSchema = z.object({
   OTP_TTL_SECONDS: z.coerce.number().int().positive().default(300),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   RESET_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  PAVULLA_API_KEY: z.string().min(1).optional(),
+  SMS_PROVIDER_ID: z.string().min(1).optional(),
+  PAVULLA_SMS_SENDER: z.string().default(''),
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().default('v21.0'),
+  WHATSAPP_OTP_TEMPLATE_NAME: z.string().optional(),
+  WHATSAPP_OTP_TEMPLATE_LANG: z.string().default('pt_PT'),
+  WHATSAPP_OTP_BUTTON: z.enum(['none', 'copy_code', 'url']).default('none'),
+  VONAGE_API_KEY: z.string().optional(),
+  VONAGE_API_SECRET: z.string().optional(),
+  VONAGE_WHATSAPP_FROM: z.string().optional(),
+  VONAGE_MESSAGES_URL: z.string().url().default('https://messages-sandbox.nexmo.com/v1/messages'),
+  VONAGE_SMS_FROM: z.string().default('Ogona'),
+  VONAGE_SMS_URL: z.string().url().default('https://rest.nexmo.com/sms/json'),
 });
 
 const parsed = envSchema.safeParse(process.env);

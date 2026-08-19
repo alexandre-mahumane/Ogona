@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
-  Modal,
+  Alert,
   Pressable,
   ScrollView,
   TextInput,
@@ -13,19 +14,26 @@ import {
   WizardFooter,
   WizardProgressHeader,
 } from '@/components/host/HostChrome';
+import { PhotoGrid } from '@/components/host/PhotoGrid';
+import { LocationPickerModal } from '@/components/maps/LocationPickerModal';
 import { Input, Screen, SuccessView, Text } from '@/components/ui';
 import { propertyAmenities } from '@/data/host.mock';
 import { useCreateProperty } from '@/hooks/useHost';
 import { propertiesApi } from '@/lib/api/properties';
+import { uploadImages } from '@/lib/firebase/storage';
+import { pickImages } from '@/lib/images/picker';
+import { MAPUTO_COORDINATE } from '@/lib/maps/config';
+import {
+  getCurrentLocation,
+  provinceFromCity,
+  type PickedLocation,
+} from '@/lib/maps/geocode';
 import { propertyTypeApiByLabel } from '@/lib/mappers/host';
 import { colors } from '@/theme/colors';
 
 const TOTAL_STEPS = 5;
 const PROPERTY_TYPES = ['Pensão', 'Guest House', 'Apartamento', 'Hostel', 'Lodge'];
-const COVER_IMAGE_URL =
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop';
-const MAPUTO_LAT = -25.9692;
-const MAPUTO_LNG = 32.5732;
+const MAX_PHOTOS = 8;
 
 type FormState = {
   name: string;
@@ -39,7 +47,9 @@ type FormState = {
   door: string;
   postal: string;
   amenities: string[];
-  photos: number;
+  photos: string[];
+  latitude: number;
+  longitude: number;
 };
 
 const emptyForm: FormState = {
@@ -54,7 +64,9 @@ const emptyForm: FormState = {
   door: '',
   postal: '',
   amenities: [],
-  photos: 0,
+  photos: [],
+  latitude: MAPUTO_COORDINATE.latitude,
+  longitude: MAPUTO_COORDINATE.longitude,
 };
 
 function AmenityRow({
@@ -87,59 +99,15 @@ function AmenityRow({
   );
 }
 
-function PhotoGrid({
-  count,
-  onAdd,
-}: {
-  count: number;
-  onAdd: () => void;
-}) {
-  const slots = Array.from({ length: 9 }, (_, i) => i);
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {slots.map((i) => {
-        if (i === 0) {
-          return (
-            <Pressable
-              key={i}
-              onPress={onAdd}
-              className="h-[140px] w-[30.5%] items-center justify-center gap-3 rounded-xl border border-dashed border-brand bg-[#FCFCFC]"
-            >
-              <Ionicons name="add" size={24} color={colors.brand.DEFAULT} />
-              <Text variant="label-xs" className="text-ink-muted">
-                Adicionar fotos
-              </Text>
-            </Pressable>
-          );
-        }
-        const filled = i <= count;
-        return (
-          <View
-            key={i}
-            className="h-[140px] w-[30.5%] items-center justify-center overflow-hidden rounded-xl border border-surface-border bg-[#FCFCFC]"
-          >
-            {filled ? (
-              <View className="h-full w-full bg-[#E5E5E5]">
-                <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-[#FB2C36]">
-                  <Ionicons name="close" size={16} color="#FFFFFF" />
-                </View>
-              </View>
-            ) : (
-              <Ionicons name="image-outline" size={24} color="#E5E5E5" />
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 export function AddPropertyWizardView() {
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const createProperty = useCreateProperty();
+  const busy = uploading || createProperty.isPending;
 
   const titles = useMemo(
     () => [
@@ -167,6 +135,34 @@ export function AddPropertyWizardView() {
     setForm((prev) => ({ ...prev, ...partial }));
   }
 
+  function applyLocation(location: PickedLocation) {
+    setForm((prev) => ({
+      ...prev,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      country: location.country || prev.country || 'Moçambique',
+      city: location.city || prev.city,
+      street: location.street || prev.street,
+      door: location.door || prev.door,
+      postal: location.postal || prev.postal,
+    }));
+  }
+
+  async function useDeviceLocation() {
+    if (locating) return;
+    setLocating(true);
+    try {
+      applyLocation(await getCurrentLocation());
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível obter a localização',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    } finally {
+      setLocating(false);
+    }
+  }
+
   function toggleAmenity(label: string) {
     setForm((prev) => ({
       ...prev,
@@ -176,7 +172,23 @@ export function AddPropertyWizardView() {
     }));
   }
 
+  async function addPhotos() {
+    try {
+      const remaining = MAX_PHOTOS - form.photos.length;
+      if (remaining <= 0) return;
+      const uris = await pickImages({ limit: remaining });
+      if (!uris.length) return;
+      patch({ photos: [...form.photos, ...uris].slice(0, MAX_PHOTOS) });
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível escolher fotos',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    }
+  }
+
   function goBack() {
+    if (busy) return;
     if (step === 1) {
       router.back();
       return;
@@ -184,12 +196,23 @@ export function AddPropertyWizardView() {
     setStep((s) => s - 1);
   }
 
-  function goNext() {
-    if (step >= TOTAL_STEPS) {
-      const type =
-        propertyTypeApiByLabel[form.type] ??
-        propertyTypeApiByLabel.Pensão ??
-        'pensao';
+  async function goNext() {
+    if (busy) return;
+    if (step < TOTAL_STEPS) {
+      setStep((s) => s + 1);
+      return;
+    }
+
+    const type =
+      propertyTypeApiByLabel[form.type] ??
+      propertyTypeApiByLabel.Pensão ??
+      'pensao';
+
+    setUploading(true);
+    try {
+      const uploaded = form.photos.length
+        ? await uploadImages(form.photos, 'properties')
+        : [];
 
       createProperty.mutate(
         {
@@ -198,17 +221,17 @@ export function AddPropertyWizardView() {
           description:
             form.description.trim() || 'Alojamento adicionado via Ogona.',
           contactPhone: form.phone.trim() || '840000000',
-          coverImageUrl: COVER_IMAGE_URL,
-          province: 'maputo_cidade',
+          coverImageUrl: uploaded[0],
+          province: provinceFromCity(form.city.trim() || 'Maputo'),
           city: form.city.trim() || 'Maputo',
-          community: 'polana',
+          community: 'outra',
           neighborhood: form.city.trim() || 'Polana',
           address:
             [form.street, form.door].filter(Boolean).join(', ') ||
             'Av. Julius Nyerere',
           postalCode: form.postal.trim() || undefined,
-          latitude: MAPUTO_LAT,
-          longitude: MAPUTO_LNG,
+          latitude: form.latitude,
+          longitude: form.longitude,
         },
         {
           onSuccess: async (property) => {
@@ -219,11 +242,22 @@ export function AddPropertyWizardView() {
             }
             setDone(true);
           },
+          onError: (error) => {
+            Alert.alert(
+              'Não foi possível publicar',
+              error instanceof Error ? error.message : 'Tente novamente.',
+            );
+          },
+          onSettled: () => setUploading(false),
         },
       );
-      return;
+    } catch (error) {
+      setUploading(false);
+      Alert.alert(
+        'Não foi possível enviar as fotos',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
     }
-    setStep((s) => s + 1);
   }
 
   function resetWizard() {
@@ -352,16 +386,10 @@ export function AddPropertyWizardView() {
               <View className="h-px flex-1 bg-[#F5F5F5]" />
             </View>
             <Pressable
-              onPress={() =>
-                patch({
-                  country: 'Moçambique',
-                  city: 'Maputo',
-                  street: 'Av. Julius Nyerere',
-                  door: '120',
-                  postal: '1100',
-                })
-              }
+              onPress={() => void useDeviceLocation()}
+              disabled={locating}
               className="h-10 flex-row items-center justify-center gap-2 rounded-xl border border-ink-secondary"
+              style={{ opacity: locating ? 0.6 : 1 }}
             >
               <Ionicons
                 name="navigate-outline"
@@ -369,7 +397,7 @@ export function AddPropertyWizardView() {
                 color={colors.ink.secondary}
               />
               <Text variant="label-s" className="text-ink-secondary">
-                Usar localização actual
+                {locating ? 'A obter localização…' : 'Usar localização actual'}
               </Text>
             </Pressable>
             <Input
@@ -432,9 +460,11 @@ export function AddPropertyWizardView() {
           <View className="gap-4">
             <Text variant="label-xs">Fotos da propriedade</Text>
             <PhotoGrid
-              count={form.photos}
-              onAdd={() =>
-                patch({ photos: Math.min(8, form.photos + 1) })
+              photos={form.photos}
+              max={MAX_PHOTOS}
+              onAdd={() => void addPhotos()}
+              onRemove={(index) =>
+                patch({ photos: form.photos.filter((_, i) => i !== index) })
               }
             />
           </View>
@@ -444,7 +474,14 @@ export function AddPropertyWizardView() {
           <View className="gap-8">
             <Text variant="p-m">Pré-visualização do anúncio</Text>
             <View className="overflow-hidden rounded-xl border border-[#F5F5F5] bg-surface shadow-sm">
-              <View className="h-[150px] bg-[#E5E5E5]" />
+              {form.photos[0] ? (
+                <Image
+                  source={{ uri: form.photos[0] }}
+                  style={{ height: 150, width: '100%' }}
+                />
+              ) : (
+                <View className="h-[150px] bg-[#E5E5E5]" />
+              )}
               <View className="gap-1 p-4">
                 <Text variant="label-s">
                   {form.name || 'Pensão Horizonte Azul'}
@@ -518,86 +555,26 @@ export function AddPropertyWizardView() {
 
       <WizardFooter
         onBack={goBack}
-        onContinue={goNext}
+        onContinue={() => void goNext()}
+        disabled={busy}
         continueLabel={
-          createProperty.isPending
-            ? 'A publicar…'
+          busy
+            ? uploading
+              ? 'A enviar fotos…'
+              : 'A publicar…'
             : step === TOTAL_STEPS
               ? 'Publicar alojamento'
               : 'Continuar'
         }
       />
 
-      <Modal visible={mapOpen} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="rounded-t-xl bg-surface pb-6">
-            <View className="items-center border-b border-surface-border px-4 pb-4 pt-2">
-              <View className="mb-4 h-0.5 w-6 rounded-full bg-[#FAFAFA]" />
-              <Text variant="h6" className="self-stretch text-ink">
-                Selecionar no mapa
-              </Text>
-              <Pressable
-                onPress={() => setMapOpen(false)}
-                className="absolute right-4 top-4"
-              >
-                <Ionicons name="close" size={18} color={colors.ink.DEFAULT} />
-              </Pressable>
-            </View>
-            <View className="gap-8 px-4 pt-8">
-              <View className="h-[280px] items-center justify-center rounded-2xl bg-[#E5E5E5]">
-                <Ionicons
-                  name="map"
-                  size={48}
-                  color={colors.brand.DEFAULT}
-                />
-                <Text variant="p-s" className="mt-2">
-                  Mapa interactivo
-                </Text>
-              </View>
-              <View className="flex-row items-start gap-3 rounded-lg border border-surface-border bg-[#FCFCFC] p-4">
-                <View className="h-8 w-8 items-center justify-center rounded-md border border-surface-border bg-[#FAFAFA]">
-                  <Ionicons
-                    name="location"
-                    size={16}
-                    color={colors.brand.DEFAULT}
-                  />
-                </View>
-                <Text variant="p-s" className="flex-1">
-                  Av. Julius Nyerere, Polana, Maputo, Moçambique
-                </Text>
-              </View>
-              <View className="flex-row gap-2.5">
-                <Pressable
-                  onPress={() => setMapOpen(false)}
-                  className="h-12 flex-1 items-center justify-center rounded-full border border-ink-secondary"
-                >
-                  <Text variant="label-m" className="text-ink-secondary">
-                    Cancelar
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    patch({
-                      country: 'Moçambique',
-                      city: 'Maputo',
-                      street: 'Av. Julius Nyerere',
-                      door: '120',
-                      postal: '1100',
-                    });
-                    setMapOpen(false);
-                  }}
-                  className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-button bg-brand"
-                >
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text variant="label-m" className="text-white">
-                    Confirmar
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <LocationPickerModal
+        visible={mapOpen}
+        latitude={form.latitude}
+        longitude={form.longitude}
+        onClose={() => setMapOpen(false)}
+        onConfirm={applyLocation}
+      />
     </Screen>
   );
 }

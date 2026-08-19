@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import {
   WizardFooter,
   WizardProgressHeader,
 } from '@/components/host/HostChrome';
+import { PhotoGrid } from '@/components/host/PhotoGrid';
 import { Input, Screen, SuccessView, Text } from '@/components/ui';
 import { propertyAmenities, roomTypes } from '@/data/host.mock';
 import { useCreateRoom } from '@/hooks/useHost';
 import type { BookingModality } from '@/lib/api/types';
+import { uploadImages } from '@/lib/firebase/storage';
+import { pickImages } from '@/lib/images/picker';
 import {
   amenityApiByLabel,
   roomTypeApiByLabel,
@@ -18,8 +21,7 @@ import {
 import { colors } from '@/theme/colors';
 
 const TOTAL_STEPS = 5;
-const ROOM_IMAGE_URL =
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&h=600&fit=crop';
+const MAX_PHOTOS = 8;
 
 const BED_OPTIONS = [
   'Cama de casal',
@@ -37,7 +39,7 @@ type FormState = {
   priceNight: string;
   priceWeek: string;
   amenities: string[];
-  photos: number;
+  photos: string[];
 };
 
 const emptyForm: FormState = {
@@ -49,7 +51,7 @@ const emptyForm: FormState = {
   priceNight: '',
   priceWeek: '',
   amenities: [],
-  photos: 0,
+  photos: [],
 };
 
 function AmenityRow({
@@ -147,53 +149,6 @@ function MoneyInput({
   );
 }
 
-function PhotoGrid({
-  count,
-  onAdd,
-}: {
-  count: number;
-  onAdd: () => void;
-}) {
-  const slots = Array.from({ length: 9 }, (_, i) => i);
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      {slots.map((i) => {
-        if (i === 0) {
-          return (
-            <Pressable
-              key={i}
-              onPress={onAdd}
-              className="h-[140px] w-[30.5%] items-center justify-center gap-3 rounded-xl border border-dashed border-brand bg-[#FCFCFC]"
-            >
-              <Ionicons name="add" size={24} color={colors.brand.DEFAULT} />
-              <Text variant="label-xs" className="text-ink-muted">
-                Adicionar fotos
-              </Text>
-            </Pressable>
-          );
-        }
-        const filled = i <= count;
-        return (
-          <View
-            key={i}
-            className="h-[140px] w-[30.5%] items-center justify-center overflow-hidden rounded-xl border border-surface-border bg-[#FCFCFC]"
-          >
-            {filled ? (
-              <View className="h-full w-full bg-[#E5E5E5]">
-                <View className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-[#FB2C36]">
-                  <Ionicons name="close" size={16} color="#FFFFFF" />
-                </View>
-              </View>
-            ) : (
-              <Ionicons name="image-outline" size={24} color="#E5E5E5" />
-            )}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 export function AddRoomWizardView() {
   const { propertyId } = useLocalSearchParams<{ propertyId?: string }>();
   const resolvedPropertyId = propertyId ? String(propertyId) : '';
@@ -201,7 +156,9 @@ export function AddRoomWizardView() {
 
   const [step, setStep] = useState(1);
   const [done, setDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const busy = uploading || createRoom.isPending;
 
   const titles = useMemo(
     () => [
@@ -235,7 +192,23 @@ export function AddRoomWizardView() {
       : [...list, label];
   }
 
+  async function addPhotos() {
+    try {
+      const remaining = MAX_PHOTOS - form.photos.length;
+      if (remaining <= 0) return;
+      const uris = await pickImages({ limit: remaining });
+      if (!uris.length) return;
+      patch({ photos: [...form.photos, ...uris].slice(0, MAX_PHOTOS) });
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível escolher fotos',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    }
+  }
+
   function goBack() {
+    if (busy) return;
     if (step === 1) {
       router.back();
       return;
@@ -243,35 +216,44 @@ export function AddRoomWizardView() {
     setStep((s) => s - 1);
   }
 
-  function goNext() {
-    if (step >= TOTAL_STEPS) {
-      if (!resolvedPropertyId) {
-        setDone(true);
-        return;
-      }
+  async function goNext() {
+    if (busy) return;
+    if (step < TOTAL_STEPS) {
+      setStep((s) => s + 1);
+      return;
+    }
 
-      const nightPrice = Number(form.priceNight) || 0;
-      const weekPrice = Number(form.priceWeek) || 0;
-      const modalities: BookingModality[] = [];
-      const prices: Partial<Record<BookingModality, number>> = {};
+    if (!form.photos.length) {
+      Alert.alert('Fotos obrigatórias', 'Adicione pelo menos uma foto do quarto.');
+      return;
+    }
 
-      if (nightPrice > 0) {
-        modalities.push('noite');
-        prices.noite = nightPrice;
-      }
-      if (weekPrice > 0) {
-        modalities.push('semana');
-        prices.semana = weekPrice;
-      }
-      if (modalities.length === 0) {
-        modalities.push('noite');
-        prices.noite = 1000;
-      }
+    if (!resolvedPropertyId) {
+      setDone(true);
+      return;
+    }
 
-      const images = Array.from(
-        { length: Math.max(1, form.photos) },
-        () => ROOM_IMAGE_URL,
-      );
+    const nightPrice = Number(form.priceNight) || 0;
+    const weekPrice = Number(form.priceWeek) || 0;
+    const modalities: BookingModality[] = [];
+    const prices: Partial<Record<BookingModality, number>> = {};
+
+    if (nightPrice > 0) {
+      modalities.push('noite');
+      prices.noite = nightPrice;
+    }
+    if (weekPrice > 0) {
+      modalities.push('semana');
+      prices.semana = weekPrice;
+    }
+    if (modalities.length === 0) {
+      modalities.push('noite');
+      prices.noite = 1000;
+    }
+
+    setUploading(true);
+    try {
+      const images = await uploadImages(form.photos, 'rooms');
 
       createRoom.mutate(
         {
@@ -291,11 +273,24 @@ export function AddRoomWizardView() {
             .filter(Boolean),
           images,
         },
-        { onSuccess: () => setDone(true) },
+        {
+          onSuccess: () => setDone(true),
+          onError: (error) => {
+            Alert.alert(
+              'Não foi possível publicar',
+              error instanceof Error ? error.message : 'Tente novamente.',
+            );
+          },
+          onSettled: () => setUploading(false),
+        },
       );
-      return;
+    } catch (error) {
+      setUploading(false);
+      Alert.alert(
+        'Não foi possível enviar as fotos',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
     }
-    setStep((s) => s + 1);
   }
 
   function resetWizard() {
@@ -453,9 +448,11 @@ export function AddRoomWizardView() {
           <View className="gap-4">
             <Text variant="label-xs">Fotos do quarto</Text>
             <PhotoGrid
-              count={form.photos}
-              onAdd={() =>
-                patch({ photos: Math.min(8, form.photos + 1) })
+              photos={form.photos}
+              max={MAX_PHOTOS}
+              onAdd={() => void addPhotos()}
+              onRemove={(index) =>
+                patch({ photos: form.photos.filter((_, i) => i !== index) })
               }
             />
             <View className="mt-4 gap-3 rounded-xl border border-surface-border bg-[#FCFCFC] p-4">
@@ -469,7 +466,7 @@ export function AddRoomWizardView() {
                 {form.priceNight ? `${form.priceNight} MT/noite` : '—'}
               </Text>
               <Text variant="p-xs">
-                {form.amenities.length} comodidades · {form.photos} fotos
+                {form.amenities.length} comodidades · {form.photos.length} fotos
               </Text>
             </View>
           </View>
@@ -478,10 +475,13 @@ export function AddRoomWizardView() {
 
       <WizardFooter
         onBack={goBack}
-        onContinue={goNext}
+        onContinue={() => void goNext()}
+        disabled={busy}
         continueLabel={
-          createRoom.isPending
-            ? 'A publicar…'
+          busy
+            ? uploading
+              ? 'A enviar fotos…'
+              : 'A publicar…'
             : step === TOTAL_STEPS
               ? 'Publicar quarto'
               : 'Continuar'

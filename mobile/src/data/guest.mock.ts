@@ -35,6 +35,8 @@ export type GuestListing = {
   id: string;
   name: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   priceLabel: string;
   priceUnit: string;
   rating: number;

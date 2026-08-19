@@ -105,6 +105,7 @@ type FooterProps = {
   onContinue: () => void;
   continueLabel?: string;
   backLabel?: string;
+  disabled?: boolean;
 };
 
 export function WizardFooter({
@@ -112,12 +113,15 @@ export function WizardFooter({
   onContinue,
   continueLabel = 'Continuar',
   backLabel = 'Voltar',
+  disabled = false,
 }: FooterProps) {
   return (
     <View className="flex-row gap-2.5 border-t border-[#F5F5F5] bg-[#FCFCFC] px-6 py-5">
       <Pressable
         onPress={onBack}
+        disabled={disabled}
         className="h-12 flex-1 items-center justify-center rounded-button border border-ink-secondary"
+        style={{ opacity: disabled ? 0.6 : 1 }}
       >
         <Text variant="label-m" className="text-ink-secondary">
           {backLabel}
@@ -125,7 +129,9 @@ export function WizardFooter({
       </Pressable>
       <Pressable
         onPress={onContinue}
+        disabled={disabled}
         className="h-12 flex-1 items-center justify-center rounded-button bg-brand"
+        style={{ opacity: disabled ? 0.6 : 1 }}
       >
         <Text variant="label-m" className="text-white">
           {continueLabel}

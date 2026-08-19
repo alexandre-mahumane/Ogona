@@ -278,7 +278,7 @@ export const openApiDocument = {
     '/auth/password/send-otp': {
       post: {
         tags: ['Auth'],
-        summary: 'Enviar OTP (SMS/WhatsApp stub)',
+        summary: 'Enviar OTP (SMS/WhatsApp Vonage)',
         responses: { '200': { description: 'OTP enviado' } },
       },
     },

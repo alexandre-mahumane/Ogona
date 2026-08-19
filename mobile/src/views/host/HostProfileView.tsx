@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Screen, Text } from '@/components/ui';
 import { guestHome } from '@/data/guest.mock';
+import { useAvatar } from '@/hooks/useAvatar';
 import { useLogoutMutation, useMeQuery } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth.store';
 import { colors } from '@/theme/colors';
@@ -21,6 +22,7 @@ export function HostProfileView() {
   const storeUser = useAuthStore((s) => s.user);
   const user = me.data ?? storeUser;
   const logout = useLogoutMutation();
+  const { changeAvatar, busy } = useAvatar();
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -41,7 +43,7 @@ export function HostProfileView() {
 
       <View className="gap-6 px-6 pt-6">
         <View className="items-center gap-4">
-          <View className="relative">
+          <Pressable onPress={() => void changeAvatar()} disabled={busy} className="relative">
             <View className="h-[120px] w-[120px] overflow-hidden rounded-full border border-surface-border">
               <Image
                 source={{
@@ -49,11 +51,16 @@ export function HostProfileView() {
                 }}
                 style={{ width: 120, height: 120 }}
               />
+              {busy ? (
+                <View className="absolute inset-0 items-center justify-center bg-black/40">
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
+              ) : null}
             </View>
             <View className="absolute bottom-2 right-0 h-8 w-8 items-center justify-center rounded-full border border-[#FFD6A8] bg-brand-soft">
               <Ionicons name="camera" size={16} color={colors.brand.DEFAULT} />
             </View>
-          </View>
+          </Pressable>
           <View className="items-center gap-1">
             <Text className="font-inter-medium text-h5 text-ink-secondary">
               {user?.name ?? 'Anfitrião'}

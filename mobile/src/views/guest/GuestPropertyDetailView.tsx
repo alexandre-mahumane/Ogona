@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 
 import { FavoriteButton, StickyFooter } from '@/components/guest/GuestChrome';
 import { ImageLightbox } from '@/components/guest/ImageLightbox';
+import { PropertyMap } from '@/components/maps/PropertyMap';
 import { Screen, Text } from '@/components/ui';
 import { usePropertyDetail, useToggleFavorite } from '@/hooks/useDiscover';
 import { colors } from '@/theme/colors';
@@ -239,16 +240,11 @@ export function GuestPropertyDetailView() {
           ) : null}
 
           {tab === 'map' ? (
-            <View className="h-40 items-center justify-center rounded-[15px] border border-dashed border-surface-border bg-surface-muted px-6">
-              <Ionicons
-                name="map-outline"
-                size={28}
-                color={colors.ink.soft}
-              />
-              <Text variant="p-s" className="mt-2 text-center">
-                Mapa disponível em breve
-              </Text>
-            </View>
+            <PropertyMap
+              latitude={listing.latitude}
+              longitude={listing.longitude}
+              title={listing.name}
+            />
           ) : null}
 
           {tab === 'reviews' ? (

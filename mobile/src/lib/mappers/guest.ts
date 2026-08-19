@@ -65,6 +65,8 @@ export function mapDiscoverCardToListing(card: DiscoverCard): GuestListing {
     id: card.id,
     name: card.name,
     location,
+    latitude: card.location.latitude,
+    longitude: card.location.longitude,
     priceLabel: price > 0 ? `MZN ${Math.round(price).toLocaleString('pt-MZ')}` : 'Sob consulta',
     priceUnit: card.priceModality === 'hora' ? 'hora' : 'noite',
     rating: card.rating.average,
@@ -163,6 +165,8 @@ export function mapPropertyDetail(
     id: property.id,
     name: property.name,
     location,
+    latitude: property.location.latitude,
+    longitude: property.location.longitude,
     priceLabel:
       rooms[0]?.priceLabel ??
       (property.rooms[0]?.priceFrom

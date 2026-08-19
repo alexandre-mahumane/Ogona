@@ -38,7 +38,20 @@
           "backgroundColor": "#FF6900"
         }
       ],
-      "expo-image"
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A Ogona precisa de aceder às fotos para o anúncio e o perfil."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "A Ogona precisa da sua localização para mostrar o mapa e preencher o endereço do alojamento."
+        }
+      ],
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": true

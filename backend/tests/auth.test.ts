@@ -85,6 +85,11 @@ describe('Auth flows', () => {
       .send({ phone: guestPayload.phone, channel: 'sms' })
       .expect(200);
 
+    await request(getApp())
+      .post('/api/v1/auth/password/send-otp')
+      .send({ phone: guestPayload.phone, channel: 'whatsapp' })
+      .expect(200);
+
     const phone = '+258841111111';
     const raw = await redis.get(`otp:reset:${phone}`);
     expect(raw).toBeTruthy();
