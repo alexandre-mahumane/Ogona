@@ -90,6 +90,38 @@ describe('Guest discover + reviews + favorites', () => {
 
     expect(roomDetail.body.data.room.id).toBe(room.id);
     expect(roomDetail.body.data.room.property.id).toBe(property.id);
+    expect(Array.isArray(roomDetail.body.data.room.unavailableDates)).toBe(true);
+    expect(Array.isArray(detail.body.data.property.rooms[0].unavailableDates)).toBe(true);
+  });
+
+  it('exposes booked nights on property and room payloads', async () => {
+    const { guest, property, room } = await seedPublished();
+
+    await request(getApp())
+      .post('/api/v1/reservations')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({
+        roomId: room.id,
+        modality: 'noite',
+        checkInDate: '2026-09-10',
+        units: 2,
+        guestCount: 1,
+      })
+      .expect(201);
+
+    const detail = await request(getApp())
+      .get(`/api/v1/discover/properties/${property.id}`)
+      .expect(200);
+    expect(detail.body.data.property.rooms[0].unavailableDates).toEqual(
+      expect.arrayContaining(['2026-09-10', '2026-09-11']),
+    );
+
+    const roomDetail = await request(getApp())
+      .get(`/api/v1/discover/rooms/${room.id}`)
+      .expect(200);
+    expect(roomDetail.body.data.room.unavailableDates).toEqual(
+      expect.arrayContaining(['2026-09-10', '2026-09-11']),
+    );
   });
 
   it('supports favorites and review summary/list', async () => {

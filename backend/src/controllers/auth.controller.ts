@@ -70,8 +70,27 @@ export class AuthController {
     });
   }
 
+  async sendRegisterOtp(req: Request, res: Response): Promise<void> {
+    const result = await authService.sendRegisterOtp(req.body);
+    res.status(200).json({
+      success: true,
+      data: {
+        ...result,
+        expiresInSeconds: env.OTP_TTL_SECONDS,
+      },
+    });
+  }
+
   async verifyPasswordOtp(req: Request, res: Response): Promise<void> {
     const result = await authService.verifyPasswordOtp(req.body);
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  }
+
+  async verifyRegisterOtp(req: Request, res: Response): Promise<void> {
+    const result = await authService.verifyRegisterOtp(req.body);
     res.status(200).json({
       success: true,
       data: result,

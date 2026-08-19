@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authRoutes } from './auth.routes';
+import { availabilityRoutes } from './availability.routes';
 import { calendarRoutes } from './calendar.routes';
 import { dashboardRoutes } from './dashboard.routes';
 import { discoverRoutes } from './discover.routes';
@@ -17,4 +18,5 @@ router.use('/discover', discoverRoutes);
 router.use('/properties', propertyRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/reviews', reviewRoutes);
+router.use('/rooms/:roomId/availability', availabilityRoutes);
 router.use('/rooms/:roomId/calendar', calendarRoutes);

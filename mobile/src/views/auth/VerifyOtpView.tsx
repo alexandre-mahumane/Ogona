@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { AuthHeader, Button, OtpInput, Screen, Text } from '@/components/ui';
+import { formatDisplayPhone } from '@/schemas/auth.schema';
 
 type Props = {
   destination?: string | null;
@@ -28,30 +29,31 @@ export function VerifyOtpView({
   }, [seconds]);
 
   const canVerify = /^\d{4}$/.test(code);
+  const phone = destination ? formatDisplayPhone(destination) : 'o seu número';
 
   return (
-    <Screen contentClassName="pb-6">
+    <Screen contentClassName="flex-1">
       <AuthHeader title="Verificar telefone" />
 
-      <View className="flex-1 justify-between px-6 pt-4">
-        <View className="gap-6">
-          <Text variant="p-m">
-            Introduza o código de 4 dígitos enviado para{' '}
-            <Text variant="label-s" className="text-ink">
-              {destination ?? 'o seu número'}
-            </Text>
+      <View className="items-center gap-10 px-6 pt-12">
+        <View className="items-center gap-1">
+          <Text variant="p-s" className="text-center">
+            Introduza o código de 4 dígitos enviado para
           </Text>
-
-          <OtpInput value={code} onChange={setCode} />
-
-          {error ? (
-            <Text variant="p-s" className="text-danger">
-              {error}
-            </Text>
-          ) : null}
+          <Text variant="label-s" className="text-ink">
+            {phone}
+          </Text>
         </View>
 
-        <View className="gap-3">
+        <OtpInput value={code} onChange={setCode} />
+
+        {error ? (
+          <Text variant="p-s" className="text-danger">
+            {error}
+          </Text>
+        ) : null}
+
+        <View className="w-full items-center gap-4">
           <Button
             loading={loading}
             disabled={!canVerify}
@@ -68,9 +70,7 @@ export function VerifyOtpView({
               onResend?.();
             }}
           >
-            {seconds > 0
-              ? `Reenviar código 00:${String(seconds).padStart(2, '0')}`
-              : 'Reenviar código'}
+            Reenviar código
           </Button>
         </View>
       </View>

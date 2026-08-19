@@ -62,11 +62,16 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationFn: authApi.login,
+
     onSuccess: async (session) => {
+      console.log('login onSuccess', session);
       const user = toAuthUser(session.user);
       await setSession(session.token, user);
       qc.setQueryData(authKeys.me, user);
     },
+    onError: (error) => {
+      console.log('login onError', error);
+    }
   });
 }
 
@@ -92,8 +97,16 @@ export function useSendOtpMutation() {
   return useMutation({ mutationFn: authApi.sendOtp });
 }
 
+export function useSendRegisterOtpMutation() {
+  return useMutation({ mutationFn: authApi.sendRegisterOtp });
+}
+
 export function useVerifyOtpMutation() {
   return useMutation({ mutationFn: authApi.verifyOtp });
+}
+
+export function useVerifyRegisterOtpMutation() {
+  return useMutation({ mutationFn: authApi.verifyRegisterOtp });
 }
 
 export function useResetPasswordMutation() {

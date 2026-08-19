@@ -10,15 +10,15 @@ import { propertyRepository } from '../repositories/property.repository';
 import { toPublicReservation } from '../repositories/reservation.mappers';
 import { reservationRepository } from '../repositories/reservation.repository';
 import { roomRepository } from '../repositories/room.repository';
-import { calendarRepository } from '../repositories/calendar.repository';
 import { userRepository } from '../repositories/user.repository';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors';
-import { toDateOnly } from '../utils/dates';
+import { formatDateOnly, toDateOnly } from '../utils/dates';
 import {
   calculatePricing,
   computeCheckOutDate,
   DEFAULT_MODALITY_LIMITS,
 } from '../utils/pricing';
+import { calendarService } from './calendar.service';
 import { activityService } from './activity.service';
 
 const PAYMENT_WINDOW_HOURS = 24;
@@ -62,6 +62,20 @@ export class ReservationService {
       input.units,
       input.startTime,
     );
+
+    const unavailableDates = await calendarService.listUnavailableDates(
+      input.roomId,
+      checkIn,
+      checkOutDate,
+    );
+    const stayNights = unavailableDates.filter(
+      (day) => day < formatDateOnly(checkOutDate),
+    );
+    if (stayNights.length > 0) {
+      throw new ConflictError('Já existe reserva nestas datas', {
+        unavailableDates: stayNights,
+      });
+    }
 
     const unitPrice = Number(price.amount);
     const pricing = calculatePricing(unitPrice, input.units);
@@ -107,24 +121,6 @@ export class ReservationService {
 
   async createAsGuest(guestId: string, input: CreateReservationInput) {
     const q = await this.buildQuote(input);
-
-    const overlap = await reservationRepository.findOverlapping({
-      roomId: input.roomId,
-      checkIn: q.checkIn,
-      checkOut: q.checkOutDate,
-    });
-    if (overlap) {
-      throw new ConflictError('Já existe reserva nestas datas');
-    }
-
-    const blocked = await calendarRepository.hasBlockedInRange(
-      input.roomId,
-      q.checkIn,
-      q.checkOutDate,
-    );
-    if (blocked) {
-      throw new ConflictError('Existem datas bloqueadas no período');
-    }
 
     const reservation = await reservationRepository.create({
       propertyId: q.property.id,

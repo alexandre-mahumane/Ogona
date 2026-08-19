@@ -64,6 +64,7 @@ export type GuestRoom = {
   available: boolean;
   detail: string;
   rates: { modality: StayModality; label: string; price: number; unit: string }[];
+  unavailableDates?: string[];
 };
 
 export type GuestReview = {

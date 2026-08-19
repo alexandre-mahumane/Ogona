@@ -1,8 +1,11 @@
 export { AuthHeader } from '@/components/ui/AuthHeader';
+export { AuthHero } from '@/components/ui/AuthHero';
 export { Button } from '@/components/ui/Button';
+export { DateField, DateInput } from '@/components/ui/DateInput';
 export { Input } from '@/components/ui/Input';
 export { OtpInput } from '@/components/ui/OtpInput';
 export { SafeAreaView } from '@/components/ui/SafeAreaView';
 export { Screen } from '@/components/ui/Screen';
+export { SelectField } from '@/components/ui/SelectField';
 export { SuccessView } from '@/components/ui/SuccessView';
 export { Text } from '@/components/ui/Text';

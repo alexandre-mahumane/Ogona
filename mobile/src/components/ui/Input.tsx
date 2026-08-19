@@ -15,6 +15,7 @@ type Props = TextInputProps & {
   error?: string;
   className?: string;
   isPassword?: boolean;
+  required?: boolean;
 };
 
 export const Input = forwardRef<TextInput, Props>(function Input(
@@ -23,6 +24,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
     error,
     className = '',
     isPassword = false,
+    required = false,
     secureTextEntry,
     ...props
   },
@@ -33,7 +35,12 @@ export const Input = forwardRef<TextInput, Props>(function Input(
 
   return (
     <View className={`w-full gap-1.5 ${className}`}>
-      {label ? <Text variant="label-xs">{label}</Text> : null}
+      {label ? (
+        <Text variant="label-xs">
+          {label}
+          {required ? <Text variant="label-xs" className="text-brand"> *</Text> : null}
+        </Text>
+      ) : null}
       <View className="h-[54px] flex-row items-center rounded-input border border-surface-border bg-surface px-4">
         <TextInput
           ref={ref}

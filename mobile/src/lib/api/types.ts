@@ -59,6 +59,7 @@ export type PropertyRoomSummary = {
   currency: string;
   thumbnailUrl: string | null;
   available: boolean;
+  unavailableDates?: string[];
 };
 
 export type DiscoverPropertyDetail = {
@@ -105,6 +106,7 @@ export type DiscoverRoomDetail = {
   currency: string;
   amenities: string[];
   images: { id: string; url: string; sortOrder: number }[];
+  unavailableDates?: string[];
   property: {
     id: string;
     name: string;

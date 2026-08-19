@@ -622,6 +622,18 @@ export const openApiDocument = {
         responses: { '200': { description: 'Métricas + actividade' } },
       },
     },
+    '/rooms/{roomId}/availability': {
+      get: {
+        tags: ['Calendar'],
+        summary: 'Datas indisponíveis do quarto (público)',
+        parameters: [
+          { name: 'roomId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+        ],
+        responses: { '200': { description: 'Datas ocupadas ou bloqueadas' } },
+      },
+    },
     '/rooms/{roomId}/calendar': {
       get: {
         tags: ['Calendar'],

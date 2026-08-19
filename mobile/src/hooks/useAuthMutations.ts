@@ -7,6 +7,8 @@ export {
   useRegisterMutation,
   useResetPasswordMutation,
   useSendOtpMutation,
+  useSendRegisterOtpMutation,
   useUpdateProfileMutation,
   useVerifyOtpMutation,
+  useVerifyRegisterOtpMutation,
 } from '@/hooks/useAuth';

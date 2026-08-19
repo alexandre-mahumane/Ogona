@@ -118,4 +118,36 @@ describe('Auth flows', () => {
       .send({ phone: guestPayload.phone, password: 'novaSenha123' })
       .expect(200);
   });
+
+  it('sends and verifies register OTP before account exists', async () => {
+    const phone = '+258849999999';
+
+    await request(getApp())
+      .post('/api/v1/auth/register/send-otp')
+      .send({ phone, channel: 'sms' })
+      .expect(200);
+
+    const raw = await redis.get(`otp:register:${phone}`);
+    expect(raw).toBeTruthy();
+    const code = JSON.parse(raw!).code as string;
+
+    await request(getApp())
+      .post('/api/v1/auth/register/verify-otp')
+      .send({ phone, code })
+      .expect(200);
+
+    await request(getApp())
+      .post('/api/v1/auth/register/guest')
+      .send({ ...guestPayload, phone })
+      .expect(201);
+  });
+
+  it('rejects register OTP when phone already exists', async () => {
+    await registerGuest();
+
+    await request(getApp())
+      .post('/api/v1/auth/register/send-otp')
+      .send({ phone: guestPayload.phone, channel: 'sms' })
+      .expect(409);
+  });
 });

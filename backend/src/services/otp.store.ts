@@ -10,8 +10,8 @@ type OtpPayload = {
   attempts: number;
 };
 
-function otpKey(phone: string): string {
-  return `otp:reset:${phone}`;
+function otpKey(phone: string, purpose: 'reset' | 'register' = 'reset'): string {
+  return `otp:${purpose}:${phone}`;
 }
 
 function resetTokenKey(token: string): string {
@@ -23,35 +23,48 @@ export function generateOtpCode(): string {
 }
 
 export class OtpStore {
-  async saveOtp(phone: string, channel: OtpChannel, code: string): Promise<void> {
+  async saveOtp(
+    phone: string,
+    channel: OtpChannel,
+    code: string,
+    purpose: 'reset' | 'register' = 'reset',
+  ): Promise<void> {
     const payload: OtpPayload = { code, channel, attempts: 0 };
-    await redis.set(otpKey(phone), JSON.stringify(payload), 'EX', env.OTP_TTL_SECONDS);
+    await redis.set(otpKey(phone, purpose), JSON.stringify(payload), 'EX', env.OTP_TTL_SECONDS);
   }
 
-  async getOtp(phone: string): Promise<OtpPayload | null> {
-    const raw = await redis.get(otpKey(phone));
+  async getOtp(
+    phone: string,
+    purpose: 'reset' | 'register' = 'reset',
+  ): Promise<OtpPayload | null> {
+    const raw = await redis.get(otpKey(phone, purpose));
     if (!raw) {
       return null;
     }
     return JSON.parse(raw) as OtpPayload;
   }
 
-  async verifyOtp(phone: string, code: string): Promise<void> {
-    const payload = await this.getOtp(phone);
+  async verifyOtp(
+    phone: string,
+    code: string,
+    purpose: 'reset' | 'register' = 'reset',
+  ): Promise<void> {
+    const key = otpKey(phone, purpose);
+    const payload = await this.getOtp(phone, purpose);
     if (!payload) {
       throw new UnauthorizedError('Código expirado ou inválido');
     }
 
     if (payload.attempts >= env.OTP_MAX_ATTEMPTS) {
-      await redis.del(otpKey(phone));
+      await redis.del(key);
       throw new UnauthorizedError('Demasiadas tentativas. Peça um novo código');
     }
 
     if (payload.code !== code) {
       payload.attempts += 1;
-      const ttl = await redis.ttl(otpKey(phone));
+      const ttl = await redis.ttl(key);
       await redis.set(
-        otpKey(phone),
+        key,
         JSON.stringify(payload),
         'EX',
         ttl > 0 ? ttl : env.OTP_TTL_SECONDS,
@@ -59,7 +72,7 @@ export class OtpStore {
       throw new ValidationError('Código inválido');
     }
 
-    await redis.del(otpKey(phone));
+    await redis.del(key);
   }
 
   async createResetToken(userId: string): Promise<string> {

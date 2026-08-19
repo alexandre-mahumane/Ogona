@@ -231,5 +231,22 @@ describe('Reservations + reviews', () => {
       });
 
     expect(overlap.status).toBe(409);
+    expect(overlap.body.error.details.unavailableDates).toEqual(
+      expect.arrayContaining(['2026-12-03', '2026-12-04']),
+    );
+
+    const quote = await request(getApp())
+      .post('/api/v1/reservations/quote')
+      .set('Authorization', `Bearer ${guest.token}`)
+      .send({
+        roomId: room.id,
+        modality: 'noite',
+        checkInDate: '2026-12-03',
+        units: 3,
+        guestCount: 1,
+      });
+
+    expect(quote.status).toBe(409);
+    expect(quote.body.error.details.unavailableDates.length).toBeGreaterThan(0);
   });
 });

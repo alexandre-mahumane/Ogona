@@ -5,21 +5,29 @@ import { useAuthStore } from '@/stores/auth.store';
 
 export default function RegisterSuccessScreen() {
   const user = useAuthStore((s) => s.user);
+  const pendingRegister = useAuthStore((s) => s.pendingRegister);
   const setPendingRegister = useAuthStore((s) => s.setPendingRegister);
+  const isHost = user?.role === 'host' || pendingRegister?.role === 'host';
 
   return (
     <SuccessView
-      primaryLabel="Explorar alojamentos"
+      title="Conta criada com sucesso"
+      description={
+        isHost
+          ? 'Bem-vindo ao Ogona! A sua conta de anfitrião foi criada. Comece por adicionar a sua primeira propriedade.'
+          : 'Bem-vindo ao Ogona! A sua conta foi criada. Explore alojamentos em todo o Moçambique.'
+      }
+      primaryLabel={isHost ? 'Ir ao painel' : 'Explorar alojamentos'}
       onPrimary={() => {
         setPendingRegister(null);
-        router.replace('/(guest)/(tabs)');
+        router.replace(isHost ? '/(host)/(tabs)' : '/(guest)/(tabs)');
       }}
-      secondaryLabel={user?.role === 'host' ? 'Adicionar uma estadia' : undefined}
+      secondaryLabel={isHost ? 'Adicionar propriedade' : undefined}
       onSecondary={
-        user?.role === 'host'
+        isHost
           ? () => {
               setPendingRegister(null);
-              router.replace('/(host)/(tabs)');
+              router.replace('/(host)/add-property');
             }
           : undefined
       }

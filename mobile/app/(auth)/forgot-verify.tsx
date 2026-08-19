@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 
 import {
-  useForgotPasswordMutation,
+  useSendOtpMutation,
   useVerifyOtpMutation,
 } from '@/hooks/useAuthMutations';
 import { useAuthStore } from '@/stores/auth.store';
@@ -11,7 +11,7 @@ export default function ForgotVerifyScreen() {
   const pendingIdentifier = useAuthStore((s) => s.pendingIdentifier);
   const setPendingResetToken = useAuthStore((s) => s.setPendingResetToken);
   const verify = useVerifyOtpMutation();
-  const resend = useForgotPasswordMutation();
+  const resend = useSendOtpMutation();
 
   function handleSubmit(code: string) {
     if (!pendingIdentifier) {
@@ -36,7 +36,7 @@ export default function ForgotVerifyScreen() {
       onSubmit={handleSubmit}
       onResend={() => {
         if (pendingIdentifier) {
-          resend.mutate({ identifier: pendingIdentifier });
+          resend.mutate({ identifier: pendingIdentifier, channel: 'sms' });
         }
       }}
       loading={verify.isPending}

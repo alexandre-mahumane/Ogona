@@ -245,6 +245,20 @@ export class ReservationRepository {
     return rows[0] ?? null;
   }
 
+  async listBlockingInRange(roomId: string, from: Date, to: Date) {
+    return db
+      .select()
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.roomId, roomId),
+          inArray(reservations.status, ['pending', 'awaiting_payment', 'confirmed']),
+          sql`${reservations.checkInDate} < ${to}`,
+          sql`${reservations.checkOutDate} > ${from}`,
+        ),
+      );
+  }
+
   async listConfirmedInRange(hostId: string, from: Date, to: Date) {
     return db
       .select()

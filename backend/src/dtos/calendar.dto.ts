@@ -30,6 +30,22 @@ export const setCalendarPriceDto = z
     }
   });
 
+export const calendarAvailabilityQueryDto = z
+  .object({
+    from: dateStr.optional(),
+    to: dateStr.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.from && data.to && data.to < data.from) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: '`to` deve ser >= `from`',
+      });
+    }
+  });
+
 export type CalendarMonthQuery = z.infer<typeof calendarMonthQueryDto>;
 export type CalendarDateRangeInput = z.infer<typeof calendarDateRangeDto>;
 export type SetCalendarPriceInput = z.infer<typeof setCalendarPriceDto>;
+export type CalendarAvailabilityQuery = z.infer<typeof calendarAvailabilityQueryDto>;

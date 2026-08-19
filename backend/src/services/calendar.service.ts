@@ -1,4 +1,5 @@
 import type {
+  CalendarAvailabilityQuery,
   CalendarDateRangeInput,
   CalendarMonthQuery,
   SetCalendarPriceInput,
@@ -7,10 +8,19 @@ import {
   calendarRepository,
   serializeCalendarDay,
 } from '../repositories/calendar.repository';
+import { propertyRepository } from '../repositories/property.repository';
 import { reservationRepository } from '../repositories/reservation.repository';
 import { roomRepository } from '../repositories/room.repository';
-import { eachDateInclusive, endOfMonth, formatDateOnly, startOfMonth, toDateOnly } from '../utils/dates';
-import { NotFoundError } from '../utils/errors';
+import {
+  addDays,
+  eachDateInclusive,
+  endOfMonth,
+  formatDateOnly,
+  startOfMonth,
+  toDateOnly,
+  todayUtc,
+} from '../utils/dates';
+import { NotFoundError, ValidationError } from '../utils/errors';
 import { propertyService } from './property.service';
 import { db } from '../config/database';
 import { eq } from 'drizzle-orm';
@@ -32,14 +42,10 @@ export class CalendarService {
 
     const [overrides, reservations] = await Promise.all([
       calendarRepository.listInRange(roomId, from, to),
-      reservationRepository.listConfirmedInRange(
-        hostId,
-        from,
-        to,
-      ),
+      reservationRepository.listBlockingInRange(roomId, from, to),
     ]);
 
-    const roomReservations = reservations.filter((r) => r.roomId === roomId);
+    const roomReservations = reservations;
 
     const days: Record<
       string,
@@ -73,7 +79,9 @@ export class CalendarService {
     }
 
     for (const reservation of roomReservations) {
-      if (!['confirmed', 'completed'].includes(reservation.status)) continue;
+      if (!['pending', 'awaiting_payment', 'confirmed', 'completed'].includes(reservation.status)) {
+        continue;
+      }
 
       const checkIn = formatDateOnly(
         reservation.checkInDate instanceof Date
@@ -108,6 +116,59 @@ export class CalendarService {
       month: query.month,
       days: Object.values(days),
       overrides: overrides.map(serializeCalendarDay),
+    };
+  }
+
+  async listUnavailableDates(roomId: string, from: Date, to: Date) {
+    const [overrides, reservations] = await Promise.all([
+      calendarRepository.listInRange(roomId, from, to),
+      reservationRepository.listBlockingInRange(roomId, from, to),
+    ]);
+
+    const unavailable = new Set<string>();
+
+    for (const row of overrides) {
+      if (row.kind !== 'blocked') continue;
+      unavailable.add(
+        formatDateOnly(row.date instanceof Date ? row.date : new Date(row.date)),
+      );
+    }
+
+    for (const reservation of reservations) {
+      const checkIn = toDateOnly(reservation.checkInDate);
+      const checkOut = toDateOnly(reservation.checkOutDate);
+      for (const day of eachDateInclusive(checkIn, checkOut)) {
+        const key = formatDateOnly(day);
+        if (key !== formatDateOnly(checkOut)) {
+          unavailable.add(key);
+        }
+      }
+    }
+
+    return [...unavailable].sort();
+  }
+
+  async getAvailability(roomId: string, query: CalendarAvailabilityQuery) {
+    const full = await roomRepository.findById(roomId);
+    if (!full) throw new NotFoundError('Quarto não encontrado');
+
+    const property = await propertyRepository.findById(full.room.propertyId);
+    if (!property || property.status !== 'published') {
+      throw new NotFoundError('Propriedade não disponível');
+    }
+
+    const from = query.from ? toDateOnly(query.from) : todayUtc();
+    const to = query.to ? toDateOnly(query.to) : addDays(from, 180);
+    const spanDays = Math.round((to.getTime() - from.getTime()) / 86_400_000);
+    if (spanDays > 366) {
+      throw new ValidationError('O intervalo máximo é de 366 dias');
+    }
+
+    return {
+      roomId,
+      from: formatDateOnly(from),
+      to: formatDateOnly(to),
+      unavailableDates: await this.listUnavailableDates(roomId, from, to),
     };
   }
 

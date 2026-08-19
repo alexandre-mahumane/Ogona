@@ -122,6 +122,12 @@ function mapRoomSummary(
     });
 
   const priceFrom = room.priceFrom ?? rates[0]?.price ?? 0;
+  const unavailableDates = [
+    ...new Set([
+      ...(room.unavailableDates ?? []),
+      ...(full?.unavailableDates ?? []),
+    ]),
+  ].sort();
 
   return {
     id: room.id,
@@ -142,6 +148,7 @@ function mapRoomSummary(
               unit: '/noite',
             },
           ],
+    unavailableDates,
   };
 }
 

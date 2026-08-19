@@ -41,12 +41,12 @@ export function OtpInput({ value, onChange, length = 4 }: Props) {
   }
 
   return (
-    <View className="flex-row justify-between gap-3">
+    <View className="flex-row justify-center gap-1.5">
       {Array.from({ length }).map((_, index) => (
         <Pressable
           key={index}
           onPress={() => refs.current[index]?.focus()}
-          className={`h-14 flex-1 items-center justify-center rounded-input border ${
+          className={`h-[54px] w-[54px] items-center justify-center rounded-input border ${
             focused === index ? 'border-brand' : 'border-surface-border'
           }`}
         >

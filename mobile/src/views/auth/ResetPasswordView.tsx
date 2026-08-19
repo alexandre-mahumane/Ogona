@@ -26,51 +26,54 @@ export function ResetPasswordView({ onSubmit, loading, error }: Props) {
   });
 
   return (
-    <Screen contentClassName="pb-6">
+    <Screen contentClassName="flex-1">
       <AuthHeader title="Recuperar palavra-passe" />
 
-      <View className="flex-1 justify-between px-6 pt-4">
-        <View className="gap-6">
-          <Text variant="p-m">Crie uma nova palavra-passe.</Text>
+      <View className="gap-10 px-6 pt-12">
+        <View className="gap-5">
+          <Text className="font-manrope text-[14px] uppercase leading-5 text-ink-soft">
+            Nova senha
+          </Text>
+          <View className="gap-4">
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Palavra-passe"
+                  isPassword
+                  placeholder="Mínimo 8 caracteres"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  error={errors.password?.message}
+                />
+              )}
+            />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Palavra-passe"
-                isPassword
-                placeholder="Mínimo de 8 caracteres"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.password?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="confirmPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="Confirmar palavra-passe"
-                isPassword
-                placeholder="Repita a sua palavra-passe"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.confirmPassword?.message}
-              />
-            )}
-          />
-
-          {error ? (
-            <Text variant="p-s" className="text-danger">
-              {error}
-            </Text>
-          ) : null}
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Confirmar palavra-passe"
+                  isPassword
+                  placeholder="Repita a palavra-passe"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  error={errors.confirmPassword?.message}
+                />
+              )}
+            />
+          </View>
         </View>
+
+        {error ? (
+          <Text variant="p-s" className="text-danger">
+            {error}
+          </Text>
+        ) : null}
 
         <Button
           loading={loading}

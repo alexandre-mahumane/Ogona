@@ -10,7 +10,7 @@ export default function ResetSuccessScreen() {
   return (
     <SuccessView
       title="Palavra-passe atualizada"
-      description="A sua palavra-passe foi alterada com sucesso. Entre com as novas credenciais."
+      description="A sua palavra-passe foi alterada com sucesso. Entre na conta com as novas credenciais."
       primaryLabel="Entrar"
       onPrimary={() => {
         setPendingIdentifier(null);

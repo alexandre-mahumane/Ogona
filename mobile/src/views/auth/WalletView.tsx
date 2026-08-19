@@ -21,9 +21,10 @@ const wallets = [
 type Props = {
   onSubmit: (data: WalletInput) => void;
   loading?: boolean;
+  error?: string | null;
 };
 
-export function WalletView({ onSubmit, loading }: Props) {
+export function WalletView({ onSubmit, loading, error }: Props) {
   const [provider, setProvider] = useState<'mpesa' | 'emola' | null>(null);
   const [phone, setPhone] = useState('');
 
@@ -69,16 +70,24 @@ export function WalletView({ onSubmit, loading }: Props) {
           />
         </View>
 
-        <Button
-          loading={loading}
-          disabled={!canSubmit}
-          onPress={() => {
-            if (!provider) return;
-            onSubmit({ provider, phone });
-          }}
-        >
-          Confirmar e continuar
-        </Button>
+        <View className="gap-3">
+          {error ? (
+            <Text variant="p-s" className="text-danger">
+              {error}
+            </Text>
+          ) : null}
+
+          <Button
+            loading={loading}
+            disabled={!canSubmit}
+            onPress={() => {
+              if (!provider) return;
+              onSubmit({ provider, phone });
+            }}
+          >
+            Confirmar e continuar
+          </Button>
+        </View>
       </View>
     </Screen>
   );

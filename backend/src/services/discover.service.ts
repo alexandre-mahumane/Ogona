@@ -9,7 +9,9 @@ import {
 } from '../repositories/discover.repository';
 import { toPublicProperty, toPublicRoom } from '../repositories/listing.mappers';
 import { roomRepository } from '../repositories/room.repository';
+import { addDays, todayUtc } from '../utils/dates';
 import { NotFoundError } from '../utils/errors';
+import { calendarService } from './calendar.service';
 import { POPULAR_DESTINATIONS } from '../utils/pricing';
 
 export class DiscoverService {
@@ -73,11 +75,19 @@ export class DiscoverService {
         : Promise.resolve(false),
     ]);
 
+    const windowFrom = todayUtc();
+    const windowTo = addDays(windowFrom, 180);
+
     const roomsDetailed = await Promise.all(
       roomRows.map(async (row) => {
         const full = await roomRepository.findById(row.id);
         if (!full) return null;
         const publicRoom = toPublicRoom(full);
+        const unavailableDates = await calendarService.listUnavailableDates(
+          row.id,
+          windowFrom,
+          windowTo,
+        );
         return {
           id: publicRoom.id,
           name: publicRoom.name,
@@ -89,6 +99,7 @@ export class DiscoverService {
           currency: publicRoom.currency,
           thumbnailUrl: publicRoom.images[0]?.url ?? property.coverImageUrl,
           available: publicRoom.status === 'disponivel',
+          unavailableDates,
         };
       }),
     );
@@ -111,8 +122,15 @@ export class DiscoverService {
     const property = await discoverRepository.getPublishedById(full.room.propertyId);
     if (!property) throw new NotFoundError('Quarto não disponível');
 
+    const unavailableDates = await calendarService.listUnavailableDates(
+      roomId,
+      todayUtc(),
+      addDays(todayUtc(), 180),
+    );
+
     return {
       ...toPublicRoom(full),
+      unavailableDates,
       property: {
         id: property.id,
         name: property.name,

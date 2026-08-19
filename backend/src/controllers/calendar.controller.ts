@@ -1,9 +1,17 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { calendarService } from '../services/calendar.service';
 import type { AuthenticatedRequest } from '../types/express';
 import { UnauthorizedError } from '../utils/errors';
 
 export class CalendarController {
+  async getAvailability(req: Request, res: Response): Promise<void> {
+    const availability = await calendarService.getAvailability(
+      req.params.roomId as string,
+      req.query as never,
+    );
+    res.status(200).json({ success: true, data: { availability } });
+  }
+
   async getMonth(req: AuthenticatedRequest, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
     const calendar = await calendarService.getMonth(

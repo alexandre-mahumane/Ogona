@@ -16,9 +16,19 @@ export type AuthUser = {
 type PendingRegister = {
   name: string;
   identifier: string;
+  birthDate: string;
   password: string;
   confirmPassword: string;
   role: UserRole;
+  acceptTerms?: boolean;
+  business?: {
+    businessName: string;
+    propertyType: string;
+    province: string;
+    city: string;
+    whatsapp: string;
+    altPhone: string;
+  };
   wallet?: {
     provider: 'mpesa' | 'emola';
     phone: string;

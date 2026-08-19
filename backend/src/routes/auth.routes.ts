@@ -29,6 +29,18 @@ authRoutes.post(
 );
 
 authRoutes.post(
+  '/register/send-otp',
+  validate(sendOtpDto),
+  asyncHandler((req, res) => authController.sendRegisterOtp(req, res)),
+);
+
+authRoutes.post(
+  '/register/verify-otp',
+  validate(verifyOtpDto),
+  asyncHandler((req, res) => authController.verifyRegisterOtp(req, res)),
+);
+
+authRoutes.post(
   '/login',
   validate(loginDto),
   asyncHandler((req, res) => authController.login(req, res)),

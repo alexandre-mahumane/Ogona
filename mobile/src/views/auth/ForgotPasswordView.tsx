@@ -26,39 +26,36 @@ export function ForgotPasswordView({ onSubmit, loading, error }: Props) {
   });
 
   return (
-    <Screen contentClassName="pb-6">
+    <Screen contentClassName="flex-1">
       <AuthHeader title="Recuperar palavra-passe" />
 
-      <View className="flex-1 justify-between px-6 pt-4">
-        <View className="gap-6">
-          <Text variant="p-m">
-            Introduza o seu e-mail ou telefone e enviaremos um código de
-            recuperação.
+      <View className="gap-10 px-6 pt-12">
+        <Text variant="p-s">
+          Introduza o seu telefone e enviaremos um código de recuperação.
+        </Text>
+
+        <Controller
+          control={control}
+          name="identifier"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <Input
+              label="Telefone"
+              autoCapitalize="none"
+              keyboardType="phone-pad"
+              placeholder="+258 84 000 0000"
+              value={value}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              error={errors.identifier?.message}
+            />
+          )}
+        />
+
+        {error ? (
+          <Text variant="p-s" className="text-danger">
+            {error}
           </Text>
-
-          <Controller
-            control={control}
-            name="identifier"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                label="E-mail ou telefone"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholder="exemplo@email.com"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.identifier?.message}
-              />
-            )}
-          />
-
-          {error ? (
-            <Text variant="p-s" className="text-danger">
-              {error}
-            </Text>
-          ) : null}
-        </View>
+        ) : null}
 
         <Button
           loading={loading}

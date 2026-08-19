@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  View,
   type PressableProps,
 } from 'react-native';
 
@@ -13,6 +14,7 @@ type Variant = 'primary' | 'disabled' | 'ghost' | 'link';
 type Props = PressableProps & {
   children: ReactNode;
   loading?: boolean;
+  loadingLabel?: string;
   variant?: Variant;
   className?: string;
   labelClassName?: string;
@@ -21,6 +23,7 @@ type Props = PressableProps & {
 export function Button({
   children,
   loading = false,
+  loadingLabel,
   variant = 'primary',
   disabled,
   className = '',
@@ -29,7 +32,7 @@ export function Button({
 }: Props) {
   const isDisabled = Boolean(disabled || loading);
   const resolvedVariant: Variant =
-    variant === 'primary' && isDisabled ? 'disabled' : variant;
+    variant === 'primary' && isDisabled && !loading ? 'disabled' : variant;
 
   const container = {
     primary: 'h-14 items-center justify-center rounded-button bg-brand px-5',
@@ -39,10 +42,10 @@ export function Button({
   }[resolvedVariant];
 
   const label = {
-    primary: 'text-white',
-    disabled: 'text-brand-muted',
-    ghost: 'text-brand',
-    link: 'text-brand',
+    primary: '!text-white',
+    disabled: '!text-brand-muted',
+    ghost: '!text-brand',
+    link: '!text-brand',
   }[resolvedVariant];
 
   return (
@@ -53,9 +56,19 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          color={resolvedVariant === 'primary' ? '#fff' : colors.brand.DEFAULT}
-        />
+        <View className="flex-row items-center gap-2">
+          <ActivityIndicator
+            color={resolvedVariant === 'primary' ? '#fff' : colors.brand.DEFAULT}
+          />
+          {loadingLabel ? (
+            <Text
+              variant="label-m"
+              className={`${label} ${labelClassName}`}
+            >
+              {loadingLabel}
+            </Text>
+          ) : null}
+        </View>
       ) : (
         <Text
           variant={resolvedVariant === 'link' ? 'label-s' : 'label-m'}

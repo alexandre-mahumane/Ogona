@@ -21,7 +21,7 @@ type RegisterPayload = {
   password: string;
   confirmPassword: string;
   role: AuthRole;
-  birthDate?: string;
+  birthDate: string;
 };
 type ForgotPayload = { identifier: string };
 type SendOtpPayload = { identifier: string; channel?: 'sms' | 'whatsapp' };
@@ -53,6 +53,7 @@ function toSession(data: { token: string; user: ApiUser }): AuthSession {
 
 export const authApi = {
   async login(payload: LoginPayload): Promise<AuthSession> {
+    console.log('login', payload);
     const data = await apiClient<{ token: string; user: ApiUser }>('/auth/login', {
       method: 'POST',
       auth: false,
@@ -61,6 +62,7 @@ export const authApi = {
         password: payload.password,
       },
     });
+    console.log('login data', data);
     return toSession(data);
   },
 
@@ -75,7 +77,7 @@ export const authApi = {
         phone: toPhone(payload.identifier),
         password: payload.password,
         confirmPassword: payload.confirmPassword,
-        birthDate: payload.birthDate ?? '01/01/1995',
+        birthDate: payload.birthDate,
       },
     });
     return toSession(data);
@@ -116,8 +118,33 @@ export const authApi = {
     );
   },
 
+  async sendRegisterOtp(payload: SendOtpPayload) {
+    return apiClient<{ phone: string; channel: string; expiresInSeconds: number }>(
+      '/auth/register/send-otp',
+      {
+        method: 'POST',
+        auth: false,
+        body: {
+          phone: toPhone(payload.identifier),
+          channel: payload.channel ?? 'sms',
+        },
+      },
+    );
+  },
+
   async verifyOtp(payload: VerifyOtpPayload) {
     return apiClient<{ resetToken: string }>('/auth/password/verify-otp', {
+      method: 'POST',
+      auth: false,
+      body: {
+        phone: toPhone(payload.identifier),
+        code: payload.code,
+      },
+    });
+  },
+
+  async verifyRegisterOtp(payload: VerifyOtpPayload) {
+    return apiClient<{ verified: boolean }>('/auth/register/verify-otp', {
       method: 'POST',
       auth: false,
       body: {

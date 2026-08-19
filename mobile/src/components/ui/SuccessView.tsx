@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import { colors } from '@/theme/colors';
 
 type Props = {
   title?: string;
@@ -24,29 +23,37 @@ export function SuccessView({
   onSecondary,
 }: Props) {
   return (
-    <Screen contentClassName="justify-between px-6 pb-6 pt-16">
-      <View className="items-center gap-4 pt-20">
-        <View
-          className="h-20 w-20 items-center justify-center rounded-full"
-          style={{ backgroundColor: '#DCFCE7' }}
-        >
-          <Ionicons name="checkmark" size={40} color={colors.success} />
+    <Screen contentClassName="flex-1 items-center justify-center px-6">
+      <View className="w-full items-center gap-8">
+        <View className="items-center gap-6">
+          <View
+            className="h-[72px] w-[72px] items-center justify-center rounded-full border-8 border-[#F0FDF4] bg-[#DCFCE7]"
+          >
+            <Ionicons name="checkmark-circle-outline" size={32} color="#00C950" />
+          </View>
+          <View className="items-center gap-1">
+            <Text variant="h3" className="text-center">
+              {title}
+            </Text>
+            <Text variant="p-m" className="text-center">
+              {description}
+            </Text>
+          </View>
         </View>
-        <Text variant="h3" className="text-center">
-          {title}
-        </Text>
-        <Text variant="p-m" className="text-center">
-          {description}
-        </Text>
-      </View>
 
-      <View className="gap-3">
-        <Button onPress={onPrimary}>{primaryLabel}</Button>
-        {secondaryLabel && onSecondary ? (
-          <Button variant="ghost" onPress={onSecondary}>
-            {secondaryLabel}
-          </Button>
-        ) : null}
+        <View className="w-full gap-4">
+          <Button onPress={onPrimary}>{primaryLabel}</Button>
+          {secondaryLabel && onSecondary ? (
+            <Button
+              variant="ghost"
+              className="border border-surface-border"
+              labelClassName="!text-ink"
+              onPress={onSecondary}
+            >
+              {secondaryLabel}
+            </Button>
+          ) : null}
+        </View>
       </View>
     </Screen>
   );

@@ -115,6 +115,27 @@ export class AuthService {
     };
   }
 
+  async sendRegisterOtp(input: SendOtpInput) {
+    const existing = await userRepository.findByPhone(input.phone);
+    if (existing) {
+      throw new ConflictError('Número de celular já registado');
+    }
+
+    const code = generateOtpCode();
+    await otpStore.saveOtp(input.phone, input.channel, code, 'register');
+    await notificationService.sendOtp({
+      phone: input.phone,
+      code,
+      channel: input.channel,
+    });
+
+    return {
+      phone: input.phone,
+      channel: input.channel,
+      message: `Código enviado via ${input.channel === 'sms' ? 'SMS' : 'WhatsApp'}`,
+    };
+  }
+
   async verifyPasswordOtp(input: VerifyOtpInput) {
     const user = await userRepository.findByPhone(input.phone);
     if (!user) {
@@ -125,6 +146,11 @@ export class AuthService {
     const resetToken = await otpStore.createResetToken(user.id);
 
     return { resetToken };
+  }
+
+  async verifyRegisterOtp(input: VerifyOtpInput) {
+    await otpStore.verifyOtp(input.phone, input.code, 'register');
+    return { verified: true };
   }
 
   async resetPassword(input: ResetPasswordInput) {

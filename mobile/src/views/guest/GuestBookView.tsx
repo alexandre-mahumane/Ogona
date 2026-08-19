@@ -9,12 +9,15 @@ import {
   PriceBreakdown,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, Screen, Text } from '@/components/ui';
+import { Button, DateField, Screen, Text } from '@/components/ui';
 import {
   CalendarPicker,
   TimePickerModal,
   addDaysIso,
   daysBetween,
+  eachIsoDay,
+  firstAvailableStay,
+  rangeHasUnavailable,
   toIsoDate,
 } from '@/components/ui/CalendarPicker';
 import { calcBookingTotal, type StayModality } from '@/data/guest.mock';
@@ -22,7 +25,12 @@ import { usePropertyDetail } from '@/hooks/useDiscover';
 import {
   useCreateReservation,
   useReservationQuote,
+  useRoomAvailability,
 } from '@/hooks/useReservations';
+import {
+  isReservationDateConflict,
+  unavailableDatesFromError,
+} from '@/lib/api/calendar';
 import { formatMt, toApiModality } from '@/lib/mappers/guest';
 import { colors } from '@/theme/colors';
 
@@ -83,33 +91,6 @@ function Stepper({
   );
 }
 
-function DateField({
-  label,
-  value,
-  onPress,
-  icon = 'calendar-outline',
-}: {
-  label: string;
-  value: string;
-  onPress: () => void;
-  icon?: keyof typeof Ionicons.glyphMap;
-}) {
-  return (
-    <View className="gap-1.5">
-      <Text variant="label-xs">{label}</Text>
-      <Pressable
-        onPress={onPress}
-        className="h-[54px] flex-row items-center justify-between rounded-input border border-surface-border bg-surface px-4"
-      >
-        <Text variant="p-s" className="text-ink">
-          {value}
-        </Text>
-        <Ionicons name={icon} size={18} color={colors.ink.soft} />
-      </Pressable>
-    </View>
-  );
-}
-
 export function GuestBookView() {
   const { id, roomId } = useLocalSearchParams<{ id: string; roomId?: string }>();
   const propertyId = id ? String(id) : undefined;
@@ -131,6 +112,7 @@ export function GuestBookView() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [conflictDates, setConflictDates] = useState<string[]>([]);
 
   useEffect(() => {
     if (!listing?.rooms.length) return;
@@ -144,6 +126,71 @@ export function GuestBookView() {
       listing?.rooms.find((r) => r.id === selectedRoomId) ?? listing?.rooms[0],
     [listing?.rooms, selectedRoomId],
   );
+
+  useEffect(() => {
+    setConflictDates([]);
+  }, [room?.id]);
+
+  const availabilityFrom = toIsoDate();
+  const availabilityTo = addDaysIso(availabilityFrom, 180);
+  const availabilityQuery = useRoomAvailability(
+    room?.id,
+    availabilityFrom,
+    availabilityTo,
+  );
+  const unavailableDates = useMemo(() => {
+    return [
+      ...new Set([
+        ...(room?.unavailableDates ?? []),
+        ...(availabilityQuery.data?.unavailableDates ?? []),
+        ...conflictDates,
+      ]),
+    ].sort();
+  }, [room?.unavailableDates, availabilityQuery.data?.unavailableDates, conflictDates]);
+  const unavailable = useMemo(
+    () => new Set(unavailableDates),
+    [unavailableDates],
+  );
+
+  const stayNightsToBlock = () => {
+    if (modality === 'hour') return [checkInDate];
+    const end =
+      modality === 'month'
+        ? addDaysIso(checkInDate, months * 30)
+        : checkOutDate;
+    return eachIsoDay(checkInDate, end);
+  };
+
+  const rememberConflictDates = (error: unknown) => {
+    const fromApi = unavailableDatesFromError(error);
+    const nights =
+      fromApi.length > 0
+        ? fromApi
+        : isReservationDateConflict(error)
+          ? stayNightsToBlock()
+          : [];
+    if (nights.length === 0) return false;
+    setConflictDates((prev) => [...new Set([...prev, ...nights])]);
+    return true;
+  };
+
+  useEffect(() => {
+    if (unavailable.size === 0) return;
+    const stayLength =
+      modality === 'night'
+        ? Math.max(daysBetween(checkInDate, checkOutDate), 1)
+        : modality === 'month'
+          ? months * 30
+          : 1;
+    const stayEnd = addDaysIso(checkInDate, stayLength);
+    const blocked =
+      unavailable.has(checkInDate) ||
+      rangeHasUnavailable(checkInDate, stayEnd, unavailable);
+    if (!blocked) return;
+    const next = firstAvailableStay(toIsoDate(), stayLength, unavailable);
+    setCheckInDate(next.start);
+    setCheckOutDate(next.end);
+  }, [unavailableDates, modality, months]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const availableModalities = room?.rates ?? [];
   const rate =
@@ -183,7 +230,11 @@ export function GuestBookView() {
 
   useEffect(() => {
     if (!quoteInput || step === 'room') return;
-    quoteMutation.mutate(quoteInput);
+    quoteMutation.mutate(quoteInput, {
+      onError: (error) => {
+        rememberConflictDates(error);
+      },
+    });
   }, [quoteInput, step]); // eslint-disable-line react-hooks/exhaustive-deps -- mutate is stable enough; avoid re-quote loops
 
   const fallbackTotals = calcBookingTotal(rate?.price ?? 0, qty);
@@ -213,6 +264,14 @@ export function GuestBookView() {
         ? `${formatDisplayDate(checkInDate)} · ${startTime}`
         : formatDisplayDate(checkInDate);
 
+  const datesBlocked = rangeHasUnavailable(
+    checkInDate,
+    resolvedCheckOut === checkInDate
+      ? addDaysIso(checkInDate, 1)
+      : resolvedCheckOut,
+    unavailable,
+  );
+
   const title =
     step === 'room'
       ? 'Escolher quarto'
@@ -235,9 +294,17 @@ export function GuestBookView() {
         router.replace('/(guest)/book-success');
       },
       onError: (error) => {
-        setFormError(
-          error instanceof Error ? error.message : 'Não foi possível criar a reserva',
-        );
+        if (
+          rememberConflictDates(error) ||
+          isReservationDateConflict(error)
+        ) {
+          void availabilityQuery.refetch();
+          setStep('dates');
+          setCalendarOpen(true);
+          return;
+        }
+        const message = error instanceof Error ? error.message : '';
+        setFormError(message || 'Não foi possível criar a reserva');
       },
     });
   };
@@ -389,7 +456,8 @@ export function GuestBookView() {
               </View>
             ) : null}
 
-            {quoteMutation.isError ? (
+            {quoteMutation.isError &&
+            !isReservationDateConflict(quoteMutation.error) ? (
               <Text variant="p-s" className="text-[#FB2C36]">
                 {quoteMutation.error instanceof Error
                   ? quoteMutation.error.message
@@ -471,7 +539,9 @@ export function GuestBookView() {
           <Button onPress={() => setStep('dates')}>Continuar</Button>
         ) : null}
         {step === 'dates' ? (
-          <Button onPress={() => setStep('confirm')}>Confirmar</Button>
+          <Button disabled={datesBlocked} onPress={() => setStep('confirm')}>
+            Confirmar
+          </Button>
         ) : null}
         {step === 'confirm' ? (
           <Button
@@ -492,6 +562,7 @@ export function GuestBookView() {
         startDate={checkInDate}
         endDate={checkOutDate}
         minDate={toIsoDate()}
+        unavailableDates={unavailableDates}
         onClose={() => setCalendarOpen(false)}
         onConfirm={(start, end) => {
           setCheckInDate(start);
