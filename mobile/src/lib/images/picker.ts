@@ -1,4 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 type PickOptions = {
   limit?: number;
@@ -6,9 +7,11 @@ type PickOptions = {
 };
 
 export async function pickImages(options: PickOptions = {}): Promise<string[]> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    throw new Error('Precisamos de acesso à galeria para adicionar fotos.');
+  if (Platform.OS === 'ios') {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      throw new Error('Precisamos de acesso à galeria para adicionar fotos.');
+    }
   }
 
   const limit = Math.max(1, options.limit ?? 1);
@@ -16,7 +19,8 @@ export async function pickImages(options: PickOptions = {}): Promise<string[]> {
     mediaTypes: ['images'],
     allowsMultipleSelection: limit > 1,
     selectionLimit: limit,
-    quality: 0.8,
+    quality: 0.7,
+    exif: false,
     allowsEditing: options.allowsEditing ?? false,
     aspect: options.allowsEditing ? [1, 1] : undefined,
   });

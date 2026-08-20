@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import {
   GuestScreenHeader,
   PriceBreakdown,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, DateField, Screen, Text } from '@/components/ui';
+import { Button, DateField, KeyboardScrollView, Screen, Text } from '@/components/ui';
 import {
   CalendarPicker,
   TimePickerModal,
@@ -468,11 +468,10 @@ export function GuestBookView() {
     <Screen className="bg-surface" contentClassName="flex-1" keyboard>
       <GuestScreenHeader title={title} onBack={goBack} />
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         contentContainerClassName="gap-6 px-6 pb-8 pt-6"
+        extraHeight={40}
       >
         {step === 'room' ? (
           <>
@@ -884,7 +883,7 @@ export function GuestBookView() {
             />
           </>
         ) : null}
-      </ScrollView>
+      </KeyboardScrollView>
 
       <StickyFooter>
         {step === 'room' ? (

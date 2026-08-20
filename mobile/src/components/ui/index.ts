@@ -3,6 +3,7 @@ export { AuthHero } from '@/components/ui/AuthHero';
 export { Button } from '@/components/ui/Button';
 export { DateField, DateInput } from '@/components/ui/DateInput';
 export { Input } from '@/components/ui/Input';
+export { KeyboardScrollView } from '@/components/ui/KeyboardScrollView';
 export { OtpInput } from '@/components/ui/OtpInput';
 export { SafeAreaView } from '@/components/ui/SafeAreaView';
 export { Screen } from '@/components/ui/Screen';

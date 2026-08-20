@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { httpsUrl } from './http-url';
 
 export const roomTypeValues = [
   'individual',
@@ -75,7 +76,7 @@ export const createRoomDto = z
     amenities: z.array(z.enum(amenityValues)).default([]),
 
     images: z
-      .array(z.string().url().max(2048))
+      .array(httpsUrl)
       .min(1, 'Adicione pelo menos 1 foto')
       .max(10, 'Máximo de 10 fotos'),
   })

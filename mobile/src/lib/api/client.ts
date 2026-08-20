@@ -39,11 +39,29 @@ function unwrapData<T>(payload: unknown): T {
   return payload as T;
 }
 
+function validationDetails(details: unknown): string | undefined {
+  if (!details || typeof details !== 'object') return undefined;
+  const body = details as {
+    fieldErrors?: Record<string, string[] | undefined>;
+    formErrors?: string[];
+  };
+  const fields = body.fieldErrors
+    ? Object.entries(body.fieldErrors).flatMap(([field, messages]) =>
+        (messages ?? []).map((message) => `${field}: ${message}`),
+      )
+    : [];
+  return [...(body.formErrors ?? []), ...fields].find(Boolean);
+}
+
 function errorMessage(payload: unknown, status: number): { message: string; code?: string } {
   if (payload !== null && typeof payload === 'object') {
     const body = payload as ErrorEnvelope;
     if (body.error?.message) {
-      return { message: body.error.message, code: body.error.code };
+      const detail = validationDetails(body.error.details);
+      return {
+        message: detail ?? body.error.message,
+        code: body.error.code,
+      };
     }
     if (typeof body.message === 'string') {
       return { message: body.message };

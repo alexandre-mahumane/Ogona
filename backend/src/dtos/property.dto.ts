@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidPhone, normalizePhone } from '../utils/phone';
+import { emptyToUndefined, optionalHttpsUrl } from './http-url';
 
 const phoneField = z
   .string()
@@ -80,15 +81,15 @@ export const createPropertyDto = z.object({
   type: z.enum(propertyTypeValues),
   description: z.string().trim().min(10).max(500),
   contactPhone: phoneField,
-  whatsapp: phoneField.optional(),
-  coverImageUrl: z.string().url().max(2048).optional(),
+  whatsapp: z.preprocess(emptyToUndefined, phoneField.optional()),
+  coverImageUrl: optionalHttpsUrl,
 
   province: z.enum(provinceValues),
   city: z.string().trim().min(2).max(120),
   community: z.enum(communityValues).optional(),
   neighborhood: z.string().trim().min(2).max(120),
   address: z.string().trim().min(5).max(255),
-  postalCode: z.string().trim().min(2).max(20).optional(),
+  postalCode: z.preprocess(emptyToUndefined, z.string().trim().min(2).max(20).optional()),
 
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),

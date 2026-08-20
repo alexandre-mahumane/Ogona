@@ -7,7 +7,7 @@ import {
   GuestScreenHeader,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Screen, SelectField, Text } from '@/components/ui';
+import { Screen, SelectField, KeyboardScrollView, Text } from '@/components/ui';
 import {
   useFiltersStore,
   type FiltersState,
@@ -254,11 +254,10 @@ export function GuestFiltersView() {
         }
       />
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
         contentContainerClassName="gap-6 px-6 pb-8 pt-12"
+        extraHeight={40}
       >
         <View className="gap-2">
           <FieldLabel>Destino</FieldLabel>
@@ -359,8 +358,7 @@ export function GuestFiltersView() {
             onChange={setParking}
           />
         </View>
-      </ScrollView>
-
+      </KeyboardScrollView>
       <StickyFooter>
         <View className="flex-row gap-3">
           <Pressable

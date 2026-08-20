@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ComponentProps } from 'react';
-import { Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Pressable, TextInput, View } from 'react-native';
 
 import {
   WizardFooter,
@@ -10,11 +10,11 @@ import {
 } from '@/components/host/HostChrome';
 import { PhotoGrid } from '@/components/host/PhotoGrid';
 import { PropertySuccessIllustration } from '@/components/icons/PropertySuccessIllustration';
-import { Button, Input, Screen, SelectField, Text } from '@/components/ui';
+import { Button, Input, KeyboardScrollView, Screen, SelectField, Text } from '@/components/ui';
 import { propertyAmenities } from '@/data/host.mock';
 import { useCreateRoom, useHostProperty } from '@/hooks/useHost';
 import type { BookingModality } from '@/lib/api/types';
-import { uploadImages } from '@/lib/firebase/storage';
+import { isRemoteImageUrl, uploadImages } from '@/lib/firebase/storage';
 import { pickImages } from '@/lib/images/picker';
 import {
   amenityApiByLabel,
@@ -338,7 +338,15 @@ export function AddRoomWizardView() {
 
     setUploading(true);
     try {
-      const images = await uploadImages(form.photos, 'rooms');
+      const localPhotos = form.photos.filter((uri) => !isRemoteImageUrl(uri));
+      const remotePhotos = form.photos.filter((uri) => isRemoteImageUrl(uri));
+      const images = [
+        ...remotePhotos,
+        ...(localPhotos.length ? await uploadImages(localPhotos, 'rooms') : []),
+      ];
+      if (!images.length) {
+        throw new Error('Não foi possível enviar as fotos. Tente outras imagens.');
+      }
 
       createRoom.mutate(
         {
@@ -456,11 +464,10 @@ export function AddRoomWizardView() {
         total={TOTAL_STEPS}
       />
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
         contentContainerClassName="gap-8 px-6 py-4 pb-8"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        extraHeight={40}
       >
         {step === 1 ? (
           <View className="gap-4">
@@ -819,7 +826,7 @@ export function AddRoomWizardView() {
             </Pressable>
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardScrollView>
 
       <WizardFooter
         onBack={goBack}

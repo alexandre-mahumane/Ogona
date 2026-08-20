@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Controller, useForm } from 'react-hook-form';
 import { View } from 'react-native';
 
-import { AuthHero, Button, Input, SafeAreaView, Text } from '@/components/ui';
+import { AuthHero, Button, Input, KeyboardScrollView, SafeAreaView, Text } from '@/components/ui';
 import { loginSchema, type LoginInput } from '@/schemas/auth.schema';
 
 type Props = {
@@ -30,7 +30,11 @@ export function LoginView({ onSubmit, loading, error }: Props) {
 
       <AuthHero />
 
-      <View className="flex-1 px-6 pt-12">
+      <KeyboardScrollView
+        className="flex-1"
+        contentContainerClassName="flex-grow px-6 pt-12"
+        extraHeight={24}
+      >
         <View className="gap-8">
           <View className="gap-1.5">
             <Text variant="h3">Bem-vindo de volta</Text>
@@ -103,7 +107,7 @@ export function LoginView({ onSubmit, loading, error }: Props) {
             <Button variant="link">Registar</Button>
           </Link>
         </View>
-      </View>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

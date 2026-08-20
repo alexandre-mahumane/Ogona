@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import {
   AuthHeader,
   Button,
   Input,
+  KeyboardScrollView,
   Screen,
   SelectField,
   Text,
@@ -234,10 +235,10 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
         }
       />
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardScrollView
+        className="flex-1"
         contentContainerClassName="flex-grow pb-6"
+        extraHeight={40}
       >
 
       <View className="gap-8 px-6 pt-12">
@@ -496,7 +497,7 @@ export function RegisterView({ onSubmit, loading, error }: Props) {
           </View>
         ) : null}
       </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </Screen>
   );
 }

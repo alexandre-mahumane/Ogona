@@ -1,6 +1,9 @@
-export const MAPBOX_ACCESS_TOKEN =
-  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
-  'pk.eyJ1Ijoic2hhdzEyIiwiYSI6ImNrZXR4bDhmbDBqYmUzNGxoa2I3M2hmdDMifQ.b-m-i1U8b4MWy5WUCegzSQ';
+export const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
+
+// Mapbox streets-v11 precisa de um pk. válido. O token actual dá 401 e o mapa fica preto.
+export const MAP_STYLE_URL =
+  process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL ??
+  'https://tiles.openfreemap.org/styles/bright';
 
 export const MAPUTO_COORDINATE = {
   latitude: -25.9692,

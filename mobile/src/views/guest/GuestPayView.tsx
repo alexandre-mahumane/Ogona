@@ -7,7 +7,7 @@ import {
   GuestScreenHeader,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, Screen, Text } from '@/components/ui';
+import { Button, KeyboardScrollView, Screen, Text } from '@/components/ui';
 import {
   useGuestReservation,
   usePayReservation,
@@ -119,7 +119,11 @@ export function GuestPayView() {
     <Screen className="bg-[#FCFCFC]" contentClassName="flex-1" keyboard>
       <GuestScreenHeader title="Pagamento" onBack={() => router.back()} />
 
-      <View className="flex-1 px-[19px] pt-6" style={{ gap: 16 }}>
+      <KeyboardScrollView
+        className="flex-1"
+        contentContainerClassName="gap-4 px-[19px] pt-6 pb-8"
+        extraHeight={40}
+      >
         <Text
           variant="plain"
           className="font-inter-semibold"
@@ -250,7 +254,7 @@ export function GuestPayView() {
             </Text>
           </>
         ) : null}
-      </View>
+      </KeyboardScrollView>
 
       {method ? (
         <StickyFooter>

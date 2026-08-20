@@ -1,11 +1,7 @@
 import { type ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
 
+import { KeyboardScrollView } from '@/components/ui/KeyboardScrollView';
 import {
   SafeAreaView,
   type SafeAreaEdge,
@@ -29,25 +25,31 @@ export function Screen({
   edges,
 }: Props) {
   const body = scroll ? (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      contentContainerClassName={`flex-grow ${contentClassName}`}
-      className="flex-1"
-    >
-      {children}
-    </ScrollView>
+    keyboard ? (
+      <KeyboardScrollView
+        className="flex-1"
+        contentContainerClassName={`flex-grow ${contentClassName}`}
+      >
+        {children}
+      </KeyboardScrollView>
+    ) : (
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName={`flex-grow ${contentClassName}`}
+        className="flex-1"
+      >
+        {children}
+      </ScrollView>
+    )
   ) : (
     <View className={`flex-1 ${contentClassName}`}>{children}</View>
   );
 
   return (
     <SafeAreaView className={`flex-1 bg-surface ${className}`} edges={edges}>
-      {keyboard ? (
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+      {keyboard && !scroll ? (
+        <KeyboardAvoidingView className="flex-1" behavior="padding">
           {body}
         </KeyboardAvoidingView>
       ) : (

@@ -4,7 +4,7 @@ import { Linking, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { DEFAULT_ZOOM, mapsAppUrl, toLngLat } from '@/lib/maps/config';
-import { initMapbox } from '@/lib/maps/mapbox';
+import { initMapbox, mapViewProps, mapViewStyle } from '@/lib/maps/mapbox';
 import { colors } from '@/theme/colors';
 
 initMapbox();
@@ -42,13 +42,14 @@ export function PropertyMap({
     <View className="overflow-hidden rounded-[15px] border border-[#F5F5F5]">
       <View style={{ width: '100%', height }}>
         <Mapbox.MapView
-          style={{ flex: 1 }}
-          styleURL={Mapbox.StyleURL.Street}
-          scaleBarEnabled={false}
+          style={mapViewStyle}
+          {...mapViewProps}
           attributionEnabled
-          logoEnabled
         >
           <Mapbox.Camera
+            centerCoordinate={coordinate}
+            zoomLevel={DEFAULT_ZOOM}
+            animationDuration={0}
             defaultSettings={{
               centerCoordinate: coordinate,
               zoomLevel: DEFAULT_ZOOM,

@@ -5,8 +5,12 @@ import { ActivityIndicator, Modal, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { DEFAULT_ZOOM, toLngLat } from '@/lib/maps/config';
-import { reverseGeocode, type PickedLocation } from '@/lib/maps/geocode';
-import { initMapbox } from '@/lib/maps/mapbox';
+import {
+  formatPickedAddress,
+  reverseGeocode,
+  type PickedLocation,
+} from '@/lib/maps/geocode';
+import { initMapbox, mapViewProps, mapViewStyle } from '@/lib/maps/mapbox';
 import { colors } from '@/theme/colors';
 
 initMapbox();
@@ -27,22 +31,57 @@ export function LocationPickerModal({
   onConfirm,
 }: Props) {
   const [center, setCenter] = useState({ latitude, longitude });
-  const [preview, setPreview] = useState('Toque no mapa ou arraste o pino.');
+  const [preview, setPreview] = useState('Arraste o mapa para escolher o bairro.');
+  const [resolved, setResolved] = useState<PickedLocation | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setCenter({ latitude, longitude });
-    setPreview(
-      `Toque no mapa ou arraste o pino. ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-    );
+    setResolved(null);
+    setPreview('Arraste o mapa para escolher o bairro.');
   }, [visible, latitude, longitude]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    setPreview('A identificar o bairro…');
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const picked = await reverseGeocode(center.latitude, center.longitude);
+          if (cancelled) return;
+          setResolved(picked);
+          setPreview(
+            picked.neighborhood
+              ? `${picked.neighborhood}${picked.city ? `, ${picked.city}` : ''}`
+              : formatPickedAddress(picked),
+          );
+        } catch {
+          if (cancelled) return;
+          setResolved(null);
+          setPreview(
+            `Toque no mapa ou arraste o pino. ${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)}`,
+          );
+        }
+      })();
+    }, 650);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [visible, center.latitude, center.longitude]);
 
   async function confirm() {
     if (confirming) return;
     setConfirming(true);
     try {
-      const picked = await reverseGeocode(center.latitude, center.longitude);
+      const picked =
+        resolved &&
+        Math.abs(resolved.latitude - center.latitude) < 0.00015 &&
+        Math.abs(resolved.longitude - center.longitude) < 0.00015
+          ? resolved
+          : await reverseGeocode(center.latitude, center.longitude);
       onConfirm(picked);
       onClose();
     } catch {
@@ -51,6 +90,7 @@ export function LocationPickerModal({
         longitude: center.longitude,
         country: 'Moçambique',
         city: '',
+        neighborhood: '',
         street: '',
         door: '',
         postal: '',
@@ -83,16 +123,20 @@ export function LocationPickerModal({
             <View className="h-[280px] overflow-hidden rounded-2xl">
               <Mapbox.MapView
                 key={visible ? `${latitude}-${longitude}` : 'closed'}
-                style={{ flex: 1 }}
-                styleURL={Mapbox.StyleURL.Street}
-                scaleBarEnabled={false}
+                style={mapViewStyle}
+                {...mapViewProps}
                 onCameraChanged={(state) => {
                   const [lng, lat] = state.properties.center;
                   if (lng == null || lat == null) return;
-                  setCenter({ latitude: lat, longitude: lng });
-                  setPreview(
-                    `Toque no mapa ou arraste o pino. ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-                  );
+                  setCenter((prev) => {
+                    if (
+                      Math.abs(prev.latitude - lat) < 0.00005 &&
+                      Math.abs(prev.longitude - lng) < 0.00005
+                    ) {
+                      return prev;
+                    }
+                    return { latitude: lat, longitude: lng };
+                  });
                 }}
               >
                 <Mapbox.Camera

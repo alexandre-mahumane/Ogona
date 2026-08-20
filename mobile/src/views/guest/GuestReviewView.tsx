@@ -7,7 +7,7 @@ import {
   GuestScreenHeader,
   StickyFooter,
 } from '@/components/guest/GuestChrome';
-import { Button, Screen, Text } from '@/components/ui';
+import { Button, KeyboardScrollView, Screen, Text } from '@/components/ui';
 import { useGuestReservation } from '@/hooks/useReservations';
 import { useCreateReview } from '@/hooks/useReviews';
 import { colors } from '@/theme/colors';
@@ -74,7 +74,11 @@ export function GuestReviewView() {
         onBack={() => router.back()}
       />
 
-      <View className="flex-1 gap-6 px-6 pt-6">
+      <KeyboardScrollView
+        className="flex-1"
+        contentContainerClassName="gap-6 px-6 pt-6 pb-8"
+        extraHeight={40}
+      >
         <View className="gap-1">
           <Text
             variant="plain"
@@ -159,7 +163,7 @@ export function GuestReviewView() {
             {comment.length}/500
           </Text>
         </View>
-      </View>
+      </KeyboardScrollView>
 
       <StickyFooter>
         <Button

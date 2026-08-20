@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
-  ScrollView,
   TextInput,
   View,
 } from 'react-native';
@@ -17,11 +16,11 @@ import {
 import { PhotoGrid } from '@/components/host/PhotoGrid';
 import { PropertySuccessIllustration } from '@/components/icons/PropertySuccessIllustration';
 import { LocationPickerModal } from '@/components/maps/LocationPickerModal';
-import { Button, Input, Screen, SelectField, Text } from '@/components/ui';
+import { Button, Input, KeyboardScrollView, Screen, SelectField, Text } from '@/components/ui';
 import { propertyAmenities } from '@/data/host.mock';
 import { useCreateProperty, useHostProperty, useUpdateProperty } from '@/hooks/useHost';
 import { propertiesApi } from '@/lib/api/properties';
-import { uploadImages } from '@/lib/firebase/storage';
+import { isRemoteImageUrl, uploadImages } from '@/lib/firebase/storage';
 import { pickImages } from '@/lib/images/picker';
 import { MAPUTO_COORDINATE } from '@/lib/maps/config';
 import {
@@ -214,16 +213,15 @@ export function AddPropertyWizardView() {
   function applyLocation(location: PickedLocation) {
     setForm((prev) => {
       const city = location.city || prev.city;
+      const address = [location.street, location.door].filter(Boolean).join(', ');
       return {
         ...prev,
         latitude: location.latitude,
         longitude: location.longitude,
         city,
         province: city ? provinceFromCity(city) : prev.province,
-        neighborhood: prev.neighborhood || location.street || prev.neighborhood,
-        address:
-          [location.street, location.door].filter(Boolean).join(', ') ||
-          prev.address,
+        neighborhood: location.neighborhood || prev.neighborhood,
+        address: address || prev.address,
         postal: location.postal || prev.postal,
       };
     });
@@ -298,8 +296,8 @@ export function AddPropertyWizardView() {
 
     setUploading(true);
     try {
-      const localPhotos = form.photos.filter((uri) => !/^https?:\/\//.test(uri));
-      const remotePhotos = form.photos.filter((uri) => /^https?:\/\//.test(uri));
+      const localPhotos = form.photos.filter((uri) => !isRemoteImageUrl(uri));
+      const remotePhotos = form.photos.filter((uri) => isRemoteImageUrl(uri));
       const uploaded = localPhotos.length
         ? await uploadImages(localPhotos, 'properties')
         : [];
@@ -315,7 +313,9 @@ export function AddPropertyWizardView() {
           form.whatsapp.replace(/\s|-/g, '').length >= 9
             ? form.whatsapp.trim()
             : undefined,
-        coverImageUrl,
+        coverImageUrl: coverImageUrl && isRemoteImageUrl(coverImageUrl)
+          ? coverImageUrl
+          : undefined,
         province: (form.province ||
           provinceFromCity(form.city.trim() || 'Maputo')) as string,
         city: form.city.trim() || 'Maputo',
@@ -477,11 +477,10 @@ export function AddPropertyWizardView() {
         total={TOTAL_STEPS}
       />
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
         contentContainerClassName="gap-8 px-6 py-4 pb-8"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        extraHeight={40}
       >
         {step === 1 ? (
           <View className="gap-6">
@@ -856,7 +855,7 @@ export function AddPropertyWizardView() {
             </Pressable>
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardScrollView>
 
       <WizardFooter
         onBack={goBack}
