@@ -40,7 +40,8 @@ export async function sendVonageMessage(input: {
   text: string;
   channel?: VonageChannel;
 }): Promise<VonageResult> {
-  if (!isVonageConfigured()) {
+  const whatsappFrom = env.VONAGE_WHATSAPP_FROM?.trim();
+  if (!isVonageConfigured() || !whatsappFrom) {
     return {
       success: false,
       error: 'Vonage não configurado (VONAGE_API_KEY / VONAGE_API_SECRET / VONAGE_WHATSAPP_FROM)',
@@ -58,7 +59,7 @@ export async function sendVonageMessage(input: {
         Authorization: `Basic ${basicAuth()}`,
       },
       body: JSON.stringify({
-        from: toRecipient(env.VONAGE_WHATSAPP_FROM),
+        from: toRecipient(whatsappFrom),
         to: toRecipient(input.to),
         message_type: 'text',
         text: input.text,
